@@ -1,0 +1,14 @@
+{
+  "name": "grasskarma",
+  "private": true,
+  "packageManager": "pnpm@10.30.3",
+  "engines": { "node": ">=22" },
+  "repository": { "type": "git", "url": "git+https://github.com/proappstore-online/grasskarma.git" },
+  "scripts": {
+    "dev": "pnpm --filter @grasskarma/web dev",
+    "build": "pnpm --filter @grasskarma/web build",
+    "preview": "pnpm --filter @grasskarma/web preview",
+    "typecheck": "pnpm --filter @grasskarma/web exec tsc -b",
+    "test": "pnpm --filter @grasskarma/web exec tsc -b"
+  }
+}
