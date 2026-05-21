@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
-        globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2,wasm,json}'],
+        globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2,wasm,json,md}'],
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         runtimeCaching: [
           {
@@ -34,14 +34,16 @@ export default defineConfig({
         ],
       },
       manifest: {
-        name: 'Grasskarma',
-        short_name: 'Grasskarma',
-        description: 'Grasskarma — pro app on ProAppStore',
+        name: 'GrassKarma',
+        short_name: 'GrassKarma',
+        description: 'Hyper-local lawn care — neighbours share a mower, street by street.',
         start_url: '/',
         display: 'standalone',
         background_color: '#ffffff',
-        theme_color: '#7c3aed',
+        theme_color: '#2d7d7d',
         orientation: 'any',
+        // @ts-expect-error vite-plugin-pwa's ManifestOptions hasn't picked up the W3C-draft min_viewport_width field yet
+        min_viewport_width: 360,
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
