@@ -126,7 +126,17 @@ export const MIGRATIONS = [
 let migrated = false
 export async function ensureMigrated(): Promise<void> {
   if (migrated) return
-  await app.db.migrate(MIGRATIONS)
+  try {
+    // Raw `db.migrate` is restricted to the app's team since the platform's
+    // cross-tenant SQL lockdown, so regular users get a 403 here — that's fine:
+    // the schema is applied at deploy time (migrations.json) and by team-member
+    // visits, so swallow the 403 and continue. Every user-facing read/write goes
+    // through registered actions (see lib/actions.ts), not raw SQL.
+    await app.db.migrate(MIGRATIONS)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    if (!message.includes('403')) throw err
+  }
   migrated = true
 }
 

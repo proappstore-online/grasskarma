@@ -1,5 +1,5 @@
-import { app } from './app'
 import { ensureMigrated } from './db'
+import { q, x } from './actions'
 import type { MowerReviewRow } from './db'
 import type { MowerReview } from '../models'
 
@@ -31,11 +31,16 @@ export async function createReview(input: ReviewCreate): Promise<MowerReview> {
   if (input.rating < 1 || input.rating > 5) throw new Error('rating must be 1..5')
   const id = crypto.randomUUID()
   const now = Date.now()
-  await app.db.execute(
-    `INSERT INTO mower_reviews (id, mower_id, reviewer_id, group_id, schedule_id, rating, comment, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, input.mowerId, input.reviewerId, input.groupId ?? null, input.scheduleId ?? null, input.rating, input.comment ?? null, now, now],
-  )
+  // The reviewer is always the verified caller (`:__user_id`); `input.reviewerId`
+  // is the caller's own id.
+  await x('create_review', {
+    id,
+    mower_id: input.mowerId,
+    group_id: input.groupId ?? null,
+    schedule_id: input.scheduleId ?? null,
+    rating: input.rating,
+    comment: input.comment ?? null,
+  })
   return {
     id,
     mowerId: input.mowerId,
@@ -51,10 +56,7 @@ export async function createReview(input: ReviewCreate): Promise<MowerReview> {
 
 export async function listReviews(mowerId: string): Promise<MowerReview[]> {
   await ensureMigrated()
-  const { rows } = await app.db.query<MowerReviewRow>(
-    'SELECT * FROM mower_reviews WHERE mower_id = ? ORDER BY created_at DESC',
-    [mowerId],
-  )
+  const rows = await q<MowerReviewRow>('list_reviews', { mower_id: mowerId })
   return rows.map(rowToReview)
 }
 
@@ -65,33 +67,27 @@ export interface ReviewPatch {
 
 export async function updateReview(id: string, patch: ReviewPatch): Promise<void> {
   await ensureMigrated()
-  const sets: string[] = []
-  const params: unknown[] = []
+  const params: Record<string, unknown> = { id }
   if ('rating' in patch) {
     if (patch.rating! < 1 || patch.rating! > 5) throw new Error('rating must be 1..5')
-    sets.push('rating = ?')
-    params.push(patch.rating)
+    params.set_rating = 1
+    params.rating = patch.rating
   }
   if ('comment' in patch) {
-    sets.push('comment = ?')
-    params.push(patch.comment ?? null)
+    params.set_comment = 1
+    params.comment = patch.comment ?? null
   }
-  if (sets.length === 0) return
-  sets.push('updated_at = ?')
-  params.push(Date.now())
-  await app.db.execute(`UPDATE mower_reviews SET ${sets.join(', ')} WHERE id = ?`, [...params, id])
+  if (Object.keys(params).length === 1) return
+  await x('update_review', params)
 }
 
 export async function deleteReview(id: string): Promise<void> {
   await ensureMigrated()
-  await app.db.execute('DELETE FROM mower_reviews WHERE id = ?', [id])
+  await x('delete_review', { id })
 }
 
 export async function averageRating(mowerId: string): Promise<{ average: number; count: number }> {
   await ensureMigrated()
-  const { rows } = await app.db.query<{ avg: number | null; n: number }>(
-    'SELECT AVG(rating) AS avg, COUNT(*) AS n FROM mower_reviews WHERE mower_id = ?',
-    [mowerId],
-  )
+  const rows = await q<{ avg: number | null; n: number }>('average_rating', { mower_id: mowerId })
   return { average: rows[0]?.avg ?? 0, count: rows[0]?.n ?? 0 }
 }

@@ -1,0 +1,727 @@
+{
+  "tools": [
+    {
+      "name": "get_user",
+      "description": "Fetch one user row (public neighbourhood profile) by id",
+      "operation": "query",
+      "sql": "SELECT * FROM users WHERE id = :id",
+      "params": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_users",
+      "description": "List users filtered by role/suburb/postcode (neighbourhood directory)",
+      "operation": "query",
+      "sql": "SELECT * FROM users WHERE (:role IS NULL OR role = :role) AND (:suburb IS NULL OR suburb = :suburb) AND (:postcode IS NULL OR postcode = :postcode) ORDER BY updated_at DESC LIMIT :limit",
+      "params": {
+        "role": {
+          "type": "string",
+          "optional": true
+        },
+        "suburb": {
+          "type": "string",
+          "optional": true
+        },
+        "postcode": {
+          "type": "string",
+          "optional": true
+        },
+        "limit": {
+          "type": "integer",
+          "default": 100,
+          "max": 1000,
+          "optional": true
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "create_me",
+      "description": "Create the caller's own user row with a chosen role (first-time onboarding; id is the verified caller)",
+      "operation": "execute",
+      "sql": "INSERT INTO users (id, email, name, photo_url, role, suburb, postcode, state, country, lat, lng, client_profile, mower_profile, street_group_id, created_at, updated_at) VALUES (:__user_id, :email, :name, :photo_url, :role, :suburb, :postcode, :state, :country, :lat, :lng, :client_profile, :mower_profile, NULL, :__now, :__now)",
+      "params": {
+        "email": {
+          "type": "string",
+          "optional": true
+        },
+        "name": {
+          "type": "string",
+          "optional": true
+        },
+        "photo_url": {
+          "type": "string",
+          "optional": true
+        },
+        "role": {
+          "type": "string"
+        },
+        "suburb": {
+          "type": "string",
+          "optional": true
+        },
+        "postcode": {
+          "type": "string",
+          "optional": true
+        },
+        "state": {
+          "type": "string",
+          "optional": true
+        },
+        "country": {
+          "type": "string",
+          "optional": true
+        },
+        "lat": {
+          "type": "number",
+          "optional": true
+        },
+        "lng": {
+          "type": "number",
+          "optional": true
+        },
+        "client_profile": {
+          "type": "string",
+          "optional": true
+        },
+        "mower_profile": {
+          "type": "string",
+          "optional": true
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "update_me",
+      "description": "Update the caller's own user row (profile fields; only supplied fields change, others keep their value)",
+      "operation": "execute",
+      "sql": "UPDATE users SET email = CASE WHEN :set_email = 1 THEN :email ELSE email END, name = CASE WHEN :set_name = 1 THEN :name ELSE name END, photo_url = CASE WHEN :set_photo_url = 1 THEN :photo_url ELSE photo_url END, role = CASE WHEN :set_role = 1 THEN :role ELSE role END, suburb = CASE WHEN :set_suburb = 1 THEN :suburb ELSE suburb END, postcode = CASE WHEN :set_postcode = 1 THEN :postcode ELSE postcode END, state = CASE WHEN :set_state = 1 THEN :state ELSE state END, country = CASE WHEN :set_country = 1 THEN :country ELSE country END, lat = CASE WHEN :set_lat = 1 THEN :lat ELSE lat END, lng = CASE WHEN :set_lng = 1 THEN :lng ELSE lng END, client_profile = CASE WHEN :set_client_profile = 1 THEN :client_profile ELSE client_profile END, mower_profile = CASE WHEN :set_mower_profile = 1 THEN :mower_profile ELSE mower_profile END, street_group_id = CASE WHEN :set_street_group_id = 1 THEN :street_group_id ELSE street_group_id END, updated_at = :__now WHERE id = :__user_id",
+      "params": {
+        "set_email": { "type": "integer", "default": 0, "optional": true },
+        "email": { "type": "string", "optional": true },
+        "set_name": { "type": "integer", "default": 0, "optional": true },
+        "name": { "type": "string", "optional": true },
+        "set_photo_url": { "type": "integer", "default": 0, "optional": true },
+        "photo_url": { "type": "string", "optional": true },
+        "set_role": { "type": "integer", "default": 0, "optional": true },
+        "role": { "type": "string", "optional": true },
+        "set_suburb": { "type": "integer", "default": 0, "optional": true },
+        "suburb": { "type": "string", "optional": true },
+        "set_postcode": { "type": "integer", "default": 0, "optional": true },
+        "postcode": { "type": "string", "optional": true },
+        "set_state": { "type": "integer", "default": 0, "optional": true },
+        "state": { "type": "string", "optional": true },
+        "set_country": { "type": "integer", "default": 0, "optional": true },
+        "country": { "type": "string", "optional": true },
+        "set_lat": { "type": "integer", "default": 0, "optional": true },
+        "lat": { "type": "number", "optional": true },
+        "set_lng": { "type": "integer", "default": 0, "optional": true },
+        "lng": { "type": "number", "optional": true },
+        "set_client_profile": { "type": "integer", "default": 0, "optional": true },
+        "client_profile": { "type": "string", "optional": true },
+        "set_mower_profile": { "type": "integer", "default": 0, "optional": true },
+        "mower_profile": { "type": "string", "optional": true },
+        "set_street_group_id": { "type": "integer", "default": 0, "optional": true },
+        "street_group_id": { "type": "string", "optional": true }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "admin_set_role",
+      "description": "Set any user's role (platform admins only — caller must be a user with role='admin')",
+      "operation": "execute",
+      "sql": "UPDATE users SET role = :role, updated_at = :__now WHERE id = :user_id AND EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')",
+      "params": {
+        "user_id": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "admin_delete_user",
+      "description": "Delete any user (platform admins only — caller must be a user with role='admin')",
+      "operation": "execute",
+      "sql": "DELETE FROM users WHERE id = :user_id AND EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')",
+      "params": {
+        "user_id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_groups",
+      "description": "List street groups filtered by status/suburb/postcode/assigned mower",
+      "operation": "query",
+      "sql": "SELECT * FROM street_groups WHERE (:status IS NULL OR status = :status) AND (:suburb IS NULL OR suburb = :suburb) AND (:postcode IS NULL OR postcode = :postcode) AND (:mower_id IS NULL OR assigned_mower_id = :mower_id) ORDER BY updated_at DESC LIMIT :limit",
+      "params": {
+        "status": {
+          "type": "string",
+          "optional": true
+        },
+        "suburb": {
+          "type": "string",
+          "optional": true
+        },
+        "postcode": {
+          "type": "string",
+          "optional": true
+        },
+        "mower_id": {
+          "type": "string",
+          "optional": true
+        },
+        "limit": {
+          "type": "integer",
+          "default": 200,
+          "max": 1000,
+          "optional": true
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "get_group",
+      "description": "Fetch one street group by id",
+      "operation": "query",
+      "sql": "SELECT * FROM street_groups WHERE id = :id",
+      "params": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "create_group",
+      "description": "Create a street group with the caller as its sole admin and member (created_by is the verified caller)",
+      "operation": "execute",
+      "sql": "INSERT INTO street_groups (id, name, street_name, suburb, postcode, state, country, center_lat, center_lng, admin_ids, member_ids, assigned_mower_id, status, created_at, updated_at) VALUES (:id, :name, :street_name, :suburb, :postcode, :state, :country, :center_lat, :center_lng, json_array(:__user_id), json_array(:__user_id), NULL, 'forming', :__now, :__now)",
+      "params": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "street_name": {
+          "type": "string",
+          "optional": true
+        },
+        "suburb": {
+          "type": "string",
+          "optional": true
+        },
+        "postcode": {
+          "type": "string",
+          "optional": true
+        },
+        "state": {
+          "type": "string",
+          "optional": true
+        },
+        "country": {
+          "type": "string",
+          "optional": true
+        },
+        "center_lat": {
+          "type": "number",
+          "optional": true
+        },
+        "center_lng": {
+          "type": "number",
+          "optional": true
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "update_group",
+      "description": "Update a street group's profile/status/assigned mower (group admins or platform admins only)",
+      "operation": "execute",
+      "sql": "UPDATE street_groups SET name = CASE WHEN :set_name = 1 THEN :name ELSE name END, street_name = CASE WHEN :set_street_name = 1 THEN :street_name ELSE street_name END, suburb = CASE WHEN :set_suburb = 1 THEN :suburb ELSE suburb END, postcode = CASE WHEN :set_postcode = 1 THEN :postcode ELSE postcode END, state = CASE WHEN :set_state = 1 THEN :state ELSE state END, country = CASE WHEN :set_country = 1 THEN :country ELSE country END, center_lat = CASE WHEN :set_center_lat = 1 THEN :center_lat ELSE center_lat END, center_lng = CASE WHEN :set_center_lng = 1 THEN :center_lng ELSE center_lng END, status = CASE WHEN :set_status = 1 THEN :status ELSE status END, assigned_mower_id = CASE WHEN :set_assigned_mower_id = 1 THEN :assigned_mower_id ELSE assigned_mower_id END, updated_at = :__now WHERE id = :id AND (EXISTS (SELECT 1 FROM json_each(street_groups.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
+      "params": {
+        "id": { "type": "string" },
+        "set_name": { "type": "integer", "default": 0, "optional": true },
+        "name": { "type": "string", "optional": true },
+        "set_street_name": { "type": "integer", "default": 0, "optional": true },
+        "street_name": { "type": "string", "optional": true },
+        "set_suburb": { "type": "integer", "default": 0, "optional": true },
+        "suburb": { "type": "string", "optional": true },
+        "set_postcode": { "type": "integer", "default": 0, "optional": true },
+        "postcode": { "type": "string", "optional": true },
+        "set_state": { "type": "integer", "default": 0, "optional": true },
+        "state": { "type": "string", "optional": true },
+        "set_country": { "type": "integer", "default": 0, "optional": true },
+        "country": { "type": "string", "optional": true },
+        "set_center_lat": { "type": "integer", "default": 0, "optional": true },
+        "center_lat": { "type": "number", "optional": true },
+        "set_center_lng": { "type": "integer", "default": 0, "optional": true },
+        "center_lng": { "type": "number", "optional": true },
+        "set_status": { "type": "integer", "default": 0, "optional": true },
+        "status": { "type": "string", "optional": true },
+        "set_assigned_mower_id": { "type": "integer", "default": 0, "optional": true },
+        "assigned_mower_id": { "type": "string", "optional": true }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "add_group_member",
+      "description": "Add a user to a group's member list (self-join, or a group admin / platform admin adding someone). No-op if already a member.",
+      "operation": "execute",
+      "sql": "UPDATE street_groups SET member_ids = json_insert(member_ids, '$[#]', :user_id), updated_at = :__now WHERE id = :group_id AND NOT EXISTS (SELECT 1 FROM json_each(member_ids) WHERE value = :user_id) AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
+      "params": {
+        "group_id": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "remove_group_member",
+      "description": "Remove a user from a group's member list (self-leave, or a group admin / platform admin removing someone)",
+      "operation": "execute",
+      "sql": "UPDATE street_groups SET member_ids = (SELECT COALESCE(json_group_array(value), json_array()) FROM json_each(member_ids) WHERE value != :user_id), updated_at = :__now WHERE id = :group_id AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
+      "params": {
+        "group_id": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "add_group_admin",
+      "description": "Add a user to a group's admin list (existing group admins or platform admins only). No-op if already an admin.",
+      "operation": "execute",
+      "sql": "UPDATE street_groups SET admin_ids = json_insert(admin_ids, '$[#]', :user_id), updated_at = :__now WHERE id = :group_id AND NOT EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :user_id) AND (EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
+      "params": {
+        "group_id": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "remove_group_admin",
+      "description": "Remove a user from a group's admin list (existing group admins or platform admins only)",
+      "operation": "execute",
+      "sql": "UPDATE street_groups SET admin_ids = (SELECT COALESCE(json_group_array(value), json_array()) FROM json_each(admin_ids) WHERE value != :user_id), updated_at = :__now WHERE id = :group_id AND (EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
+      "params": {
+        "group_id": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "delete_group",
+      "description": "Delete a group and all its schedules, interests, mower-interests and votes atomically (group admins or platform admins only)",
+      "operation": "batch",
+      "params": {
+        "group_id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true,
+      "statements": [
+        "DELETE FROM schedules WHERE group_id = :group_id AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')))",
+        "DELETE FROM street_group_interests WHERE group_id = :group_id AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')))",
+        "DELETE FROM mower_interest_votes WHERE interest_id IN (SELECT id FROM mower_interests WHERE group_id = :group_id) AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')))",
+        "DELETE FROM mower_interests WHERE group_id = :group_id AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')))",
+        "DELETE FROM street_groups WHERE id = :group_id AND (EXISTS (SELECT 1 FROM json_each(street_groups.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))"
+      ]
+    },
+    {
+      "name": "create_group_interest",
+      "description": "Express the caller's interest in joining a street group (upsert on group+user; the caller is the applicant)",
+      "operation": "execute",
+      "sql": "INSERT INTO street_group_interests (id, group_id, user_id, message, created_at) VALUES (:id, :group_id, :__user_id, :message, :__now) ON CONFLICT (group_id, user_id) DO UPDATE SET message = excluded.message, created_at = excluded.created_at",
+      "params": {
+        "id": {
+          "type": "string"
+        },
+        "group_id": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string",
+          "optional": true
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_group_interests",
+      "description": "List join-interest requests for a group, newest first (group admins or platform admins only)",
+      "operation": "query",
+      "sql": "SELECT i.* FROM street_group_interests i JOIN street_groups g ON g.id = i.group_id WHERE i.group_id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) ORDER BY i.created_at DESC",
+      "params": {
+        "group_id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "delete_group_interest",
+      "description": "Delete a group join-interest — either the applicant themselves, or a group admin / platform admin of the target group",
+      "operation": "execute",
+      "sql": "DELETE FROM street_group_interests WHERE id = :id AND (user_id = :__user_id OR EXISTS (SELECT 1 FROM street_groups g WHERE g.id = street_group_interests.group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))))",
+      "params": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_schedules",
+      "description": "List a group's schedules ordered by due date then day of week",
+      "operation": "query",
+      "sql": "SELECT * FROM schedules WHERE group_id = :group_id ORDER BY due_date ASC NULLS LAST, day_of_week ASC NULLS LAST",
+      "params": {
+        "group_id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_schedules_for_mower",
+      "description": "List schedules assigned to a mower, most recent due first",
+      "operation": "query",
+      "sql": "SELECT * FROM schedules WHERE mower_id = :mower_id ORDER BY due_date DESC LIMIT :limit",
+      "params": {
+        "mower_id": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer",
+          "default": 100,
+          "max": 500,
+          "optional": true
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "create_schedule",
+      "description": "Create a schedule for a group (group admins or platform admins only)",
+      "operation": "execute",
+      "sql": "INSERT INTO schedules (id, group_id, day_of_week, start_time, mower_id, status, due_date, completed_at, created_at, updated_at) SELECT :id, :group_id, :day_of_week, :start_time, :mower_id, 'planned', :due_date, NULL, :__now, :__now WHERE EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')))",
+      "params": {
+        "id": {
+          "type": "string"
+        },
+        "group_id": {
+          "type": "string"
+        },
+        "day_of_week": {
+          "type": "integer",
+          "optional": true
+        },
+        "start_time": {
+          "type": "string",
+          "optional": true
+        },
+        "mower_id": {
+          "type": "string",
+          "optional": true
+        },
+        "due_date": {
+          "type": "integer",
+          "optional": true
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "update_schedule",
+      "description": "Update a schedule (group admins/platform admins, or the assigned mower updating status/completion)",
+      "operation": "execute",
+      "sql": "UPDATE schedules SET day_of_week = CASE WHEN :set_day_of_week = 1 THEN :day_of_week ELSE day_of_week END, start_time = CASE WHEN :set_start_time = 1 THEN :start_time ELSE start_time END, mower_id = CASE WHEN :set_mower_id = 1 THEN :mower_id ELSE mower_id END, status = CASE WHEN :set_status = 1 THEN :status ELSE status END, due_date = CASE WHEN :set_due_date = 1 THEN :due_date ELSE due_date END, completed_at = CASE WHEN :set_completed_at = 1 THEN :completed_at ELSE completed_at END, updated_at = :__now WHERE id = :id AND (schedules.mower_id = :__user_id OR EXISTS (SELECT 1 FROM street_groups g WHERE g.id = schedules.group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))))",
+      "params": {
+        "id": { "type": "string" },
+        "set_day_of_week": { "type": "integer", "default": 0, "optional": true },
+        "day_of_week": { "type": "integer", "optional": true },
+        "set_start_time": { "type": "integer", "default": 0, "optional": true },
+        "start_time": { "type": "string", "optional": true },
+        "set_mower_id": { "type": "integer", "default": 0, "optional": true },
+        "mower_id": { "type": "string", "optional": true },
+        "set_status": { "type": "integer", "default": 0, "optional": true },
+        "status": { "type": "string", "optional": true },
+        "set_due_date": { "type": "integer", "default": 0, "optional": true },
+        "due_date": { "type": "integer", "optional": true },
+        "set_completed_at": { "type": "integer", "default": 0, "optional": true },
+        "completed_at": { "type": "integer", "optional": true }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "delete_schedule",
+      "description": "Delete a schedule (group admins or platform admins only)",
+      "operation": "execute",
+      "sql": "DELETE FROM schedules WHERE id = :id AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = schedules.group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')))",
+      "params": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "create_review",
+      "description": "Create a mower review authored by the caller (reviewer is the verified caller)",
+      "operation": "execute",
+      "sql": "INSERT INTO mower_reviews (id, mower_id, reviewer_id, group_id, schedule_id, rating, comment, created_at, updated_at) VALUES (:id, :mower_id, :__user_id, :group_id, :schedule_id, :rating, :comment, :__now, :__now)",
+      "params": {
+        "id": {
+          "type": "string"
+        },
+        "mower_id": {
+          "type": "string"
+        },
+        "group_id": {
+          "type": "string",
+          "optional": true
+        },
+        "schedule_id": {
+          "type": "string",
+          "optional": true
+        },
+        "rating": {
+          "type": "integer"
+        },
+        "comment": {
+          "type": "string",
+          "optional": true
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_reviews",
+      "description": "List reviews for a mower, newest first",
+      "operation": "query",
+      "sql": "SELECT * FROM mower_reviews WHERE mower_id = :mower_id ORDER BY created_at DESC",
+      "params": {
+        "mower_id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "update_review",
+      "description": "Update the caller's own review (only the review's author may edit)",
+      "operation": "execute",
+      "sql": "UPDATE mower_reviews SET rating = CASE WHEN :set_rating = 1 THEN :rating ELSE rating END, comment = CASE WHEN :set_comment = 1 THEN :comment ELSE comment END, updated_at = :__now WHERE id = :id AND reviewer_id = :__user_id",
+      "params": {
+        "id": { "type": "string" },
+        "set_rating": { "type": "integer", "default": 0, "optional": true },
+        "rating": { "type": "integer", "optional": true },
+        "set_comment": { "type": "integer", "default": 0, "optional": true },
+        "comment": { "type": "string", "optional": true }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "delete_review",
+      "description": "Delete a review — either its author, or a platform admin",
+      "operation": "execute",
+      "sql": "DELETE FROM mower_reviews WHERE id = :id AND (reviewer_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
+      "params": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "average_rating",
+      "description": "Average rating and review count for a mower",
+      "operation": "query",
+      "sql": "SELECT AVG(rating) AS avg, COUNT(*) AS n FROM mower_reviews WHERE mower_id = :mower_id",
+      "params": {
+        "mower_id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "record_history",
+      "description": "Record a completed-job history entry for the caller as the mower (mower_id is the verified caller)",
+      "operation": "execute",
+      "sql": "INSERT INTO history_records (id, mower_id, group_id, schedule_id, street_name, area_sqm, duration_min, income, date) VALUES (:id, :__user_id, :group_id, :schedule_id, :street_name, :area_sqm, :duration_min, :income, :date)",
+      "params": {
+        "id": {
+          "type": "string"
+        },
+        "group_id": {
+          "type": "string",
+          "optional": true
+        },
+        "schedule_id": {
+          "type": "string",
+          "optional": true
+        },
+        "street_name": {
+          "type": "string",
+          "optional": true
+        },
+        "area_sqm": {
+          "type": "integer",
+          "optional": true
+        },
+        "duration_min": {
+          "type": "integer",
+          "optional": true
+        },
+        "income": {
+          "type": "integer",
+          "optional": true
+        },
+        "date": {
+          "type": "integer"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_history",
+      "description": "List a mower's job history, most recent first",
+      "operation": "query",
+      "sql": "SELECT * FROM history_records WHERE mower_id = :mower_id ORDER BY date DESC LIMIT :limit",
+      "params": {
+        "mower_id": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer",
+          "default": 200,
+          "max": 1000,
+          "optional": true
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_interests_for_group",
+      "description": "List mowers who have expressed interest in servicing a group, newest first",
+      "operation": "query",
+      "sql": "SELECT * FROM mower_interests WHERE group_id = :group_id ORDER BY created_at DESC",
+      "params": {
+        "group_id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_interests_for_mower",
+      "description": "List the groups a mower has expressed interest in, newest first",
+      "operation": "query",
+      "sql": "SELECT * FROM mower_interests WHERE mower_id = :mower_id ORDER BY created_at DESC",
+      "params": {
+        "mower_id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "create_mower_interest",
+      "description": "Express the caller's (a mower's) interest in servicing a group (upsert on mower+group; the caller is the mower)",
+      "operation": "execute",
+      "sql": "INSERT INTO mower_interests (id, group_id, mower_id, message, created_at, updated_at) VALUES (:id, :group_id, :__user_id, :message, :__now, :__now) ON CONFLICT (mower_id, group_id) DO UPDATE SET message = excluded.message, updated_at = excluded.updated_at",
+      "params": {
+        "id": {
+          "type": "string"
+        },
+        "group_id": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string",
+          "optional": true
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "delete_mower_interest",
+      "description": "Delete a mower interest and its votes atomically — either the mower who owns it, or a group admin / platform admin of the target group",
+      "operation": "batch",
+      "params": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true,
+      "statements": [
+        "DELETE FROM mower_interest_votes WHERE interest_id = :id AND EXISTS (SELECT 1 FROM mower_interests mi WHERE mi.id = :id AND (mi.mower_id = :__user_id OR EXISTS (SELECT 1 FROM street_groups g WHERE g.id = mi.group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')))))",
+        "DELETE FROM mower_interests WHERE id = :id AND (mower_id = :__user_id OR EXISTS (SELECT 1 FROM street_groups g WHERE g.id = mower_interests.group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))))"
+      ]
+    },
+    {
+      "name": "cast_vote",
+      "description": "Cast or change the caller's vote on a mower interest (voter is the verified caller; upsert on interest+voter)",
+      "operation": "execute",
+      "sql": "INSERT INTO mower_interest_votes (interest_id, voter_id, vote, created_at) VALUES (:interest_id, :__user_id, :vote, :__now) ON CONFLICT(interest_id, voter_id) DO UPDATE SET vote = excluded.vote, created_at = excluded.created_at",
+      "params": {
+        "interest_id": {
+          "type": "string"
+        },
+        "vote": {
+          "type": "integer"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_votes",
+      "description": "List all votes on a mower interest, newest first",
+      "operation": "query",
+      "sql": "SELECT * FROM mower_interest_votes WHERE interest_id = :interest_id ORDER BY created_at DESC",
+      "params": {
+        "interest_id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "vote_tally",
+      "description": "Up/down vote counts for a mower interest",
+      "operation": "query",
+      "sql": "SELECT SUM(CASE WHEN vote = 1 THEN 1 ELSE 0 END) AS up, SUM(CASE WHEN vote = -1 THEN 1 ELSE 0 END) AS down FROM mower_interest_votes WHERE interest_id = :interest_id",
+      "params": {
+        "interest_id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    }
+  ]
+}

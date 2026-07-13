@@ -1,5 +1,5 @@
-import { app } from './app'
 import { ensureMigrated } from './db'
+import { q, x } from './actions'
 import type { HistoryRecordRow } from './db'
 import type { HistoryRecord } from '../models'
 
@@ -32,21 +32,18 @@ export async function recordHistory(input: HistoryCreate): Promise<HistoryRecord
   await ensureMigrated()
   const id = crypto.randomUUID()
   const date = input.date ?? Date.now()
-  await app.db.execute(
-    `INSERT INTO history_records (id, mower_id, group_id, schedule_id, street_name, area_sqm, duration_min, income, date)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      id,
-      input.mowerId,
-      input.groupId ?? null,
-      input.scheduleId ?? null,
-      input.streetName ?? null,
-      input.areaSqm ?? null,
-      input.durationMin ?? null,
-      input.income ?? null,
-      date,
-    ],
-  )
+  // The mower is always the verified caller (`:__user_id`); `input.mowerId` is
+  // the caller's own id.
+  await x('record_history', {
+    id,
+    group_id: input.groupId ?? null,
+    schedule_id: input.scheduleId ?? null,
+    street_name: input.streetName ?? null,
+    area_sqm: input.areaSqm ?? null,
+    duration_min: input.durationMin ?? null,
+    income: input.income ?? null,
+    date,
+  })
   return {
     id,
     mowerId: input.mowerId,
@@ -62,9 +59,6 @@ export async function recordHistory(input: HistoryCreate): Promise<HistoryRecord
 
 export async function listHistory(mowerId: string, limit = 200): Promise<HistoryRecord[]> {
   await ensureMigrated()
-  const { rows } = await app.db.query<HistoryRecordRow>(
-    'SELECT * FROM history_records WHERE mower_id = ? ORDER BY date DESC LIMIT ?',
-    [mowerId, limit],
-  )
+  const rows = await q<HistoryRecordRow>('list_history', { mower_id: mowerId, limit })
   return rows.map(rowToRecord)
 }

@@ -1,5 +1,5 @@
-import { app } from './app'
 import { ensureMigrated } from './db'
+import { q, x } from './actions'
 import type { ScheduleRow } from './db'
 import type { Schedule, ScheduleStatus } from '../models'
 
@@ -20,19 +20,13 @@ function rowToSchedule(r: ScheduleRow): Schedule {
 
 export async function listSchedules(groupId: string): Promise<Schedule[]> {
   await ensureMigrated()
-  const { rows } = await app.db.query<ScheduleRow>(
-    `SELECT * FROM schedules WHERE group_id = ? ORDER BY due_date ASC NULLS LAST, day_of_week ASC NULLS LAST`,
-    [groupId],
-  )
+  const rows = await q<ScheduleRow>('list_schedules', { group_id: groupId })
   return rows.map(rowToSchedule)
 }
 
 export async function listSchedulesForMower(mowerId: string, limit = 100): Promise<Schedule[]> {
   await ensureMigrated()
-  const { rows } = await app.db.query<ScheduleRow>(
-    `SELECT * FROM schedules WHERE mower_id = ? ORDER BY due_date DESC LIMIT ?`,
-    [mowerId, limit],
-  )
+  const rows = await q<ScheduleRow>('list_schedules_for_mower', { mower_id: mowerId, limit })
   return rows.map(rowToSchedule)
 }
 
@@ -48,11 +42,14 @@ export async function createSchedule(input: ScheduleCreate): Promise<Schedule> {
   await ensureMigrated()
   const id = crypto.randomUUID()
   const now = Date.now()
-  await app.db.execute(
-    `INSERT INTO schedules (id, group_id, day_of_week, start_time, mower_id, status, due_date, completed_at, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, 'planned', ?, NULL, ?, ?)`,
-    [id, input.groupId, input.dayOfWeek ?? null, input.startTime ?? null, input.mowerId ?? null, input.dueDate ?? null, now, now],
-  )
+  await x('create_schedule', {
+    id,
+    group_id: input.groupId,
+    day_of_week: input.dayOfWeek ?? null,
+    start_time: input.startTime ?? null,
+    mower_id: input.mowerId ?? null,
+    due_date: input.dueDate ?? null,
+  })
   return {
     id,
     groupId: input.groupId,
@@ -78,21 +75,19 @@ export interface SchedulePatch {
 
 export async function updateSchedule(id: string, patch: SchedulePatch): Promise<void> {
   await ensureMigrated()
-  const sets: string[] = []
-  const params: unknown[] = []
-  const push = (col: string, val: unknown) => {
-    sets.push(`${col} = ?`)
-    params.push(val)
+  const params: Record<string, unknown> = { id }
+  const set = (flag: string, col: string, val: unknown) => {
+    params[flag] = 1
+    params[col] = val
   }
-  if ('dayOfWeek' in patch) push('day_of_week', patch.dayOfWeek ?? null)
-  if ('startTime' in patch) push('start_time', patch.startTime ?? null)
-  if ('mowerId' in patch) push('mower_id', patch.mowerId ?? null)
-  if ('status' in patch) push('status', patch.status)
-  if ('dueDate' in patch) push('due_date', patch.dueDate ?? null)
-  if ('completedAt' in patch) push('completed_at', patch.completedAt ?? null)
-  if (sets.length === 0) return
-  push('updated_at', Date.now())
-  await app.db.execute(`UPDATE schedules SET ${sets.join(', ')} WHERE id = ?`, [...params, id])
+  if ('dayOfWeek' in patch) set('set_day_of_week', 'day_of_week', patch.dayOfWeek ?? null)
+  if ('startTime' in patch) set('set_start_time', 'start_time', patch.startTime ?? null)
+  if ('mowerId' in patch) set('set_mower_id', 'mower_id', patch.mowerId ?? null)
+  if ('status' in patch) set('set_status', 'status', patch.status)
+  if ('dueDate' in patch) set('set_due_date', 'due_date', patch.dueDate ?? null)
+  if ('completedAt' in patch) set('set_completed_at', 'completed_at', patch.completedAt ?? null)
+  if (Object.keys(params).length === 1) return
+  await x('update_schedule', params)
 }
 
 export async function markCompleted(id: string): Promise<void> {
@@ -102,5 +97,5 @@ export async function markCompleted(id: string): Promise<void> {
 
 export async function deleteSchedule(id: string): Promise<void> {
   await ensureMigrated()
-  await app.db.execute('DELETE FROM schedules WHERE id = ?', [id])
+  await x('delete_schedule', { id })
 }
