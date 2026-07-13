@@ -6,8 +6,8 @@ export default function MembershipSetupPage() {
       <div className="rounded-lg border border-[var(--line)] bg-[var(--glass)] p-6">
         <p className="text-sm text-[var(--ink)]">Subscription managed by ProAppStore platform.</p>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          Per-group billing has been removed. All Pro apps are bundled in your $9/mo ProAppStore Pro
-          subscription and creators are paid based on monthly usage share.
+          Per-group billing has been removed. All Pro apps are bundled in your $5/mo ProAppStore Pro
+          subscription.
         </p>
       </div>
     </section>

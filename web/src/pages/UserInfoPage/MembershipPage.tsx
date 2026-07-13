@@ -7,7 +7,7 @@ export default function MembershipPage() {
       <div className="rounded-lg border border-[var(--line)] bg-[var(--glass)] p-6">
         <p className="text-sm text-[var(--ink)]">Subscription managed by ProAppStore platform.</p>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          GrassKarma is included in your $9/mo ProAppStore Pro subscription. Visit your
+          GrassKarma is included in your $5/mo ProAppStore Pro subscription. Visit your
           {' '}
           <a
             href="https://proappstore.online/account"
