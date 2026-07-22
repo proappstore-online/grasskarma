@@ -7,5 +7,6 @@ import { initPro } from '@proappstore/sdk'
 // platform/PLATFORM-NOTES.md.
 export const app = initPro({
   appId: 'grasskarma',
+  authMode: 'platform-cookie',
   dataApiBase: 'https://pas-data-grasskarma.serge-the-dev.workers.dev',
 })
