@@ -24,9 +24,10 @@ export async function listSchedules(groupId: string): Promise<Schedule[]> {
   return rows.map(rowToSchedule)
 }
 
-export async function listSchedulesForMower(mowerId: string, limit = 100): Promise<Schedule[]> {
+// Always the verified caller's (`:__user_id`) own schedules.
+export async function listSchedulesForMower(limit = 100): Promise<Schedule[]> {
   await ensureMigrated()
-  const rows = await q<ScheduleRow>('list_schedules_for_mower', { mower_id: mowerId, limit })
+  const rows = await q<ScheduleRow>('list_schedules_for_mower', { limit })
   return rows.map(rowToSchedule)
 }
 

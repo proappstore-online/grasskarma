@@ -19,7 +19,7 @@ export default function MowerStreetsPage() {
       try {
         const [allGroups, mine] = await Promise.all([
           listGroups({ status: 'forming' }),
-          listInterestsForMower(user.id),
+          listInterestsForMower(),
         ])
         if (!alive) return
         setGroups(allGroups)

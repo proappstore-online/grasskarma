@@ -29,9 +29,10 @@ export async function listInterestsForGroup(groupId: string): Promise<MowerInter
   return rows.map(rowToInterest)
 }
 
-export async function listInterestsForMower(mowerId: string): Promise<MowerInterest[]> {
+// Always the verified caller's (`:__user_id`) own interests.
+export async function listInterestsForMower(): Promise<MowerInterest[]> {
   await ensureMigrated()
-  const rows = await q<MowerInterestRow>('list_interests_for_mower', { mower_id: mowerId })
+  const rows = await q<MowerInterestRow>('list_interests_for_mower')
   return rows.map(rowToInterest)
 }
 

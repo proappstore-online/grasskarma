@@ -32,7 +32,7 @@ export default function MowerDashboardPage() {
       try {
         const [groups, schedules, hist, avg] = await Promise.all([
           listGroups({ mowerId: user.id }),
-          listSchedulesForMower(user.id, 20),
+          listSchedulesForMower(20),
           listHistory(user.id, 10),
           averageRating(user.id),
         ])

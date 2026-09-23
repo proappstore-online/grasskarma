@@ -4,19 +4,24 @@
       "name": "get_user",
       "description": "Fetch one user row (public neighbourhood profile) by id",
       "operation": "query",
-      "sql": "SELECT * FROM users WHERE id = :id",
+      "sql": "SELECT u.id, u.name, u.photo_url, u.role, u.suburb, u.postcode, u.state, u.country, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.email END AS email, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.lat END AS lat, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.lng END AS lng, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.client_profile WHEN json_valid(u.client_profile) THEN json_remove(u.client_profile, '$.addressNumber', '$.natureStripPhotos') END AS client_profile, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.mower_profile WHEN json_valid(u.mower_profile) THEN json_remove(u.mower_profile, '$.addressNumber', '$.homeStreetName') END AS mower_profile, u.street_group_id, u.created_at, u.updated_at FROM users u WHERE u.id = :id AND (u.id = :__user_id OR u.role = 'mower' OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin') OR EXISTS (SELECT 1 FROM street_groups g WHERE EXISTS (SELECT 1 FROM json_each(g.member_ids) mm WHERE mm.value = u.id) AND (EXISTS (SELECT 1 FROM json_each(g.member_ids) c WHERE c.value = :__user_id) OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) c WHERE c.value = :__user_id))))",
       "params": {
         "id": {
           "type": "string"
         }
       },
-      "requires_auth": true
+      "requires_auth": true,
+      "auth": {
+        "caller_unscoped": {
+          "reason": "mower profiles are a public hire directory (name, photo, suburb, rate, radius, bio); client rows only to self, fellow street-group members and platform admins; email, lat/lng, house number, home street and verge photos masked to self/admin"
+        }
+      }
     },
     {
       "name": "list_users",
       "description": "List users filtered by role/suburb/postcode (neighbourhood directory)",
       "operation": "query",
-      "sql": "SELECT * FROM users WHERE (:role IS NULL OR role = :role) AND (:suburb IS NULL OR suburb = :suburb) AND (:postcode IS NULL OR postcode = :postcode) ORDER BY updated_at DESC LIMIT :limit",
+      "sql": "SELECT u.id, u.name, u.photo_url, u.role, u.suburb, u.postcode, u.state, u.country, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.email END AS email, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.lat END AS lat, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.lng END AS lng, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.client_profile WHEN json_valid(u.client_profile) THEN json_remove(u.client_profile, '$.addressNumber', '$.natureStripPhotos') END AS client_profile, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.mower_profile WHEN json_valid(u.mower_profile) THEN json_remove(u.mower_profile, '$.addressNumber', '$.homeStreetName') END AS mower_profile, u.street_group_id, u.created_at, u.updated_at FROM users u WHERE (:role IS NULL OR u.role = :role) AND (:suburb IS NULL OR u.suburb = :suburb) AND (:postcode IS NULL OR u.postcode = :postcode) AND (u.id = :__user_id OR u.role = 'mower' OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) ORDER BY u.updated_at DESC LIMIT :limit",
       "params": {
         "role": {
           "type": "string",
@@ -37,7 +42,12 @@
           "optional": true
         }
       },
-      "requires_auth": true
+      "requires_auth": true,
+      "auth": {
+        "caller_unscoped": {
+          "reason": "public mower hire directory (Share/hire page); non-admins see only mower rows plus themself; email, lat/lng, house number and home street masked to self/admin"
+        }
+      }
     },
     {
       "name": "create_me",
@@ -186,13 +196,18 @@
           "optional": true
         }
       },
-      "requires_auth": true
+      "requires_auth": true,
+      "auth": {
+        "caller_unscoped": {
+          "reason": "public street-group directory used to find/join a street and for mowers to find forming streets: street name, suburb, postcode, status, street-centre coords and opaque member ids; no contact or house-level address data"
+        }
+      }
     },
     {
       "name": "get_group",
       "description": "Fetch one street group by id",
       "operation": "query",
-      "sql": "SELECT * FROM street_groups WHERE id = :id",
+      "sql": "SELECT * FROM street_groups g WHERE g.id = :id AND ((EXISTS (SELECT 1 FROM json_each(g.member_ids) c WHERE c.value = :__user_id) OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) c WHERE c.value = :__user_id)) OR g.assigned_mower_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
       "params": {
         "id": {
           "type": "string"
@@ -398,7 +413,7 @@
       "name": "list_schedules",
       "description": "List a group's schedules ordered by due date then day of week",
       "operation": "query",
-      "sql": "SELECT * FROM schedules WHERE group_id = :group_id ORDER BY due_date ASC NULLS LAST, day_of_week ASC NULLS LAST",
+      "sql": "SELECT * FROM schedules WHERE group_id = :group_id AND (schedules.mower_id = :__user_id OR EXISTS (SELECT 1 FROM street_groups g WHERE g.id = schedules.group_id AND ((EXISTS (SELECT 1 FROM json_each(g.member_ids) c WHERE c.value = :__user_id) OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) c WHERE c.value = :__user_id)) OR g.assigned_mower_id = :__user_id)) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) ORDER BY due_date ASC NULLS LAST, day_of_week ASC NULLS LAST",
       "params": {
         "group_id": {
           "type": "string"
@@ -408,13 +423,10 @@
     },
     {
       "name": "list_schedules_for_mower",
-      "description": "List schedules assigned to a mower, most recent due first",
+      "description": "List the calling mower's own schedules",
       "operation": "query",
-      "sql": "SELECT * FROM schedules WHERE mower_id = :mower_id ORDER BY due_date DESC LIMIT :limit",
+      "sql": "SELECT * FROM schedules WHERE mower_id = :__user_id ORDER BY due_date DESC LIMIT :limit",
       "params": {
-        "mower_id": {
-          "type": "string"
-        },
         "limit": {
           "type": "integer",
           "default": 100,
@@ -523,13 +535,18 @@
       "name": "list_reviews",
       "description": "List reviews for a mower, newest first",
       "operation": "query",
-      "sql": "SELECT * FROM mower_reviews WHERE mower_id = :mower_id ORDER BY created_at DESC",
+      "sql": "SELECT id, mower_id, CASE WHEN reviewer_id = :__user_id THEN reviewer_id END AS reviewer_id, CASE WHEN reviewer_id = :__user_id THEN group_id END AS group_id, CASE WHEN reviewer_id = :__user_id THEN schedule_id END AS schedule_id, rating, comment, created_at, updated_at FROM mower_reviews WHERE mower_id = :mower_id ORDER BY created_at DESC",
       "params": {
         "mower_id": {
           "type": "string"
         }
       },
-      "requires_auth": true
+      "requires_auth": true,
+      "auth": {
+        "caller_unscoped": {
+          "reason": "public reviews on a mower's profile: rating, comment and date; reviewer, group and schedule ids masked unless the caller wrote the review"
+        }
+      }
     },
     {
       "name": "update_review",
@@ -567,7 +584,12 @@
           "type": "string"
         }
       },
-      "requires_auth": true
+      "requires_auth": true,
+      "auth": {
+        "caller_unscoped": {
+          "reason": "public aggregate rating (AVG + COUNT only) shown on a mower's profile"
+        }
+      }
     },
     {
       "name": "record_history",
@@ -612,7 +634,7 @@
       "name": "list_history",
       "description": "List a mower's job history, most recent first",
       "operation": "query",
-      "sql": "SELECT * FROM history_records WHERE mower_id = :mower_id ORDER BY date DESC LIMIT :limit",
+      "sql": "SELECT * FROM history_records WHERE mower_id = :mower_id AND (mower_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) ORDER BY date DESC LIMIT :limit",
       "params": {
         "mower_id": {
           "type": "string"
@@ -630,7 +652,7 @@
       "name": "list_interests_for_group",
       "description": "List mowers who have expressed interest in servicing a group, newest first",
       "operation": "query",
-      "sql": "SELECT * FROM mower_interests WHERE group_id = :group_id ORDER BY created_at DESC",
+      "sql": "SELECT * FROM mower_interests WHERE group_id = :group_id AND (mower_id = :__user_id OR EXISTS (SELECT 1 FROM street_groups g WHERE g.id = mower_interests.group_id AND (EXISTS (SELECT 1 FROM json_each(g.member_ids) c WHERE c.value = :__user_id) OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) c WHERE c.value = :__user_id))) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) ORDER BY created_at DESC",
       "params": {
         "group_id": {
           "type": "string"
@@ -640,14 +662,10 @@
     },
     {
       "name": "list_interests_for_mower",
-      "description": "List the groups a mower has expressed interest in, newest first",
+      "description": "List the calling mower's own interests",
       "operation": "query",
-      "sql": "SELECT * FROM mower_interests WHERE mower_id = :mower_id ORDER BY created_at DESC",
-      "params": {
-        "mower_id": {
-          "type": "string"
-        }
-      },
+      "sql": "SELECT * FROM mower_interests WHERE mower_id = :__user_id ORDER BY created_at DESC",
+      "params": {},
       "requires_auth": true
     },
     {
@@ -703,7 +721,7 @@
       "name": "list_votes",
       "description": "List all votes on a mower interest, newest first",
       "operation": "query",
-      "sql": "SELECT * FROM mower_interest_votes WHERE interest_id = :interest_id ORDER BY created_at DESC",
+      "sql": "SELECT * FROM mower_interest_votes WHERE interest_id = :interest_id AND (EXISTS (SELECT 1 FROM mower_interests mi JOIN street_groups g ON g.id = mi.group_id WHERE mi.id = :interest_id AND ((EXISTS (SELECT 1 FROM json_each(g.member_ids) c WHERE c.value = :__user_id) OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) c WHERE c.value = :__user_id)))) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) ORDER BY created_at DESC",
       "params": {
         "interest_id": {
           "type": "string"
@@ -715,7 +733,7 @@
       "name": "vote_tally",
       "description": "Up/down vote counts for a mower interest",
       "operation": "query",
-      "sql": "SELECT SUM(CASE WHEN vote = 1 THEN 1 ELSE 0 END) AS up, SUM(CASE WHEN vote = -1 THEN 1 ELSE 0 END) AS down FROM mower_interest_votes WHERE interest_id = :interest_id",
+      "sql": "SELECT SUM(CASE WHEN vote = 1 THEN 1 ELSE 0 END) AS up, SUM(CASE WHEN vote = -1 THEN 1 ELSE 0 END) AS down FROM mower_interest_votes WHERE interest_id = :interest_id AND (EXISTS (SELECT 1 FROM mower_interests mi JOIN street_groups g ON g.id = mi.group_id WHERE mi.id = :interest_id AND (mi.mower_id = :__user_id OR (EXISTS (SELECT 1 FROM json_each(g.member_ids) c WHERE c.value = :__user_id) OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) c WHERE c.value = :__user_id)))) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
       "params": {
         "interest_id": {
           "type": "string"
