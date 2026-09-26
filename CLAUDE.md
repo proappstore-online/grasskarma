@@ -51,14 +51,14 @@ Pages and admin operations always go through these — never call `app.db.*` dir
 
 - **No payments.** `pas/grasskarma-port-plan.md` §1 + §4. `MembershipPage` / `MembershipSetupPage` are stubs ("subscription managed by ProAppStore platform"). `mower_profile.ratePerM2` stays in the schema but is informational.
 - **No FCM, no push.** Source repo didn't have either either; nothing to port.
-- **GitHub OAuth only.** Source supported email/password + Google + Facebook; PAS is GitHub-only via `useProGate`. Real product friction for a non-developer audience — flag if onboarding drop-off shows.
+- **Google + GitHub OAuth only.** Source also supported email/password + Facebook. `AuthGate` calls `app.auth.signIn(provider)` directly because `useProGate`'s `signIn` is GitHub-only.
 - **MUI dropped** in favour of tailwind + the brand vars in `web/src/index.css` (`--accent` teal `#2D7D7D`, `--secondary` green `#5CB85C`).
 - **No tests yet.** Deferred to post-launch per ship-and-test-in-prod stance.
 
 ## Files of note
 
 - `web/src/lib/db.ts` — schema source of truth, `ensureMigrated()` cache, Row types.
-- `web/src/lib/app.ts` — SDK init points at `https://pas-data-grasskarma.serge-the-dev.workers.dev`. Per-app data Worker URL is `workers.dev` rather than `data-grasskarma.proappstore.online` — same workaround dating + carsads use; see `pas/platform/PLATFORM-NOTES.md`.
+- `web/src/lib/app.ts` — SDK init with `authMode: 'platform-cookie'`. Do **not** set `dataApiBase`: the default same-origin `/.pas/data` is the only data path that carries the HttpOnly session; a cross-origin URL 401s and the SDK signs the user out (#1).
 - `web/index.html` — has the platform analytics loader `<script src=".../v1/analytics.js?app=grasskarma">` per the cross-store standard.
 - `web/vite.config.ts` — manifest sets `min_viewport_width: 360`, theme `#2d7d7d`, name "GrassKarma".
 

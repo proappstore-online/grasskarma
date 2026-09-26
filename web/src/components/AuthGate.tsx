@@ -18,12 +18,20 @@ export function AuthGate({ children }: { children: ReactNode }) {
       <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 px-4">
         <h1 className="display-font text-3xl font-bold text-[var(--ink)]">GrassKarma</h1>
         <p className="text-[var(--muted)]">Hyper-local lawn care, one street at a time.</p>
-        <button
-          onClick={() => void signIn()}
-          className="rounded-2xl bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[var(--accent)] hover:opacity-90"
-        >
-          Sign in with GitHub
-        </button>
+        <div className="flex w-full max-w-xs flex-col gap-3">
+          <button
+            onClick={() => void signIn('google')}
+            className="rounded-2xl bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[var(--accent)] hover:opacity-90"
+          >
+            Sign in with Google
+          </button>
+          <button
+            onClick={() => void signIn('github')}
+            className="rounded-2xl border border-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-[var(--accent)] hover:opacity-90"
+          >
+            Sign in with GitHub
+          </button>
+        </div>
       </div>
     )
   }

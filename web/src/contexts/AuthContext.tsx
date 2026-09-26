@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import type { User as FasUser } from '@proappstore/sdk'
+import type { AuthProvider as SignInProvider, User as FasUser } from '@proappstore/sdk'
 import { useProGate } from '@proappstore/sdk/hooks'
 import { app } from '../lib/app'
 import { getUser, createUser } from '../lib/users'
@@ -11,7 +11,7 @@ interface AuthState {
   gate: Gate
   fasUser: FasUser | null
   user: User | null
-  signIn: () => Promise<void>
+  signIn: (provider: SignInProvider) => Promise<void>
   signOut: () => Promise<void>
   // First-time onboarding — creates the users row with the chosen role.
   chooseRole: (role: Role) => Promise<void>
@@ -75,7 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     gate,
     fasUser: gateState.user ?? null,
     user,
-    signIn: async () => gateState.signIn(),
+    // useProGate's signIn is GitHub-only; call the SDK directly to pick the provider.
+    signIn: async (provider) => app.auth.signIn(provider),
     signOut: async () => {
       await app.auth.signOut()
       setUser(null)
