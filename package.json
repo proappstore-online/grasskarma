@@ -9,6 +9,6 @@
     "build": "pnpm --filter @grasskarma/web build",
     "preview": "pnpm --filter @grasskarma/web preview",
     "typecheck": "pnpm --filter @grasskarma/web exec tsc -b",
-    "test": "pnpm --filter @grasskarma/web exec tsc -b"
+    "test": "pnpm --filter @grasskarma/web exec tsc -b && pnpm --filter @grasskarma/web test"
   }
 }
