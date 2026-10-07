@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { LabeledField, LabeledTextArea, MowerProfileFields } from '../../components/MowerProfileFields'
 import { useAuth } from '../../contexts/AuthContext'
 import { getUser, updateUser } from '../../lib/users'
 import { replaceAvatar } from '../../lib/photos'
-import { normalizePublicContactEmail } from '../../lib/mowerContacts'
-import type { User, ClientProfile, MowerProfile } from '../../models'
+import { createMowerProfileDraft, serializeMowerProfileDraft } from '../../lib/mowerProfileForm'
+import type { User, ClientProfile } from '../../models'
 
 export default function UserProfileEditPage() {
   const { userId } = useParams<{ userId: string }>()
@@ -24,8 +25,7 @@ export default function UserProfileEditPage() {
   const [state, setStateField] = useState('')
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [clientProfile, setClientProfile] = useState<ClientProfile>({})
-  const [mowerProfile, setMowerProfile] = useState<MowerProfile>({ serviceRadiusKm: 0 })
-  const [publicContactEmail, setPublicContactEmail] = useState('')
+  const [mowerProfileDraft, setMowerProfileDraft] = useState(() => createMowerProfileDraft(null, null, 'edit'))
 
   useEffect(() => {
     if (!userId) {
@@ -54,8 +54,7 @@ export default function UserProfileEditPage() {
         setStateField(u.state ?? '')
         setPhotoUrl(u.photoUrl)
         setClientProfile(u.clientProfile ?? {})
-        setMowerProfile(u.mowerProfile ?? { serviceRadiusKm: 0 })
-        setPublicContactEmail(u.publicContactEmail ?? '')
+        setMowerProfileDraft(createMowerProfileDraft(u.mowerProfile, u.publicContactEmail, 'edit'))
       } catch (err) {
         console.error(err)
         if (alive) setError('Failed to load profile.')
@@ -93,22 +92,16 @@ export default function UserProfileEditPage() {
     setError(null)
     setMessage(null)
     try {
+      const mowerProfile = user.role === 'mower' ? serializeMowerProfileDraft(mowerProfileDraft) : null
       await updateUser({
         name: name.trim() || null,
         suburb: suburb.trim() || null,
         postcode: postcode.trim() || null,
         state: state.trim() || null,
         photoUrl,
-        publicContactEmail: user.role === 'mower' ? normalizePublicContactEmail(publicContactEmail) : undefined,
+        publicContactEmail: mowerProfile?.publicContactEmail,
         clientProfile: user.role === 'client' ? clientProfile : undefined,
-        mowerProfile:
-          user.role === 'mower'
-            ? {
-                ...mowerProfile,
-                serviceRadiusKm: Number(mowerProfile.serviceRadiusKm) || 0,
-                ratePerM2: mowerProfile.ratePerM2 ? Number(mowerProfile.ratePerM2) : undefined,
-              }
-            : undefined,
+        mowerProfile: mowerProfile?.mowerProfile,
       })
       await refresh()
       setMessage('Saved.')
@@ -149,32 +142,32 @@ export default function UserProfileEditPage() {
 
       <div className="space-y-4 rounded-lg border border-[var(--line)] bg-[var(--glass)] p-5">
         <h2 className="display-font text-lg font-semibold">Basics</h2>
-        <Field label="Name" value={name} onChange={setName} />
-        <Field label="Suburb" value={suburb} onChange={setSuburb} />
-        <Field label="Postcode" value={postcode} onChange={setPostcode} />
-        <Field label="State" value={state} onChange={setStateField} />
+        <LabeledField label="Name" value={name} onChange={setName} />
+        <LabeledField label="Suburb" value={suburb} onChange={setSuburb} />
+        <LabeledField label="Postcode" value={postcode} onChange={setPostcode} />
+        <LabeledField label="State" value={state} onChange={setStateField} />
       </div>
 
       {user.role === 'client' && (
         <div className="space-y-4 rounded-lg border border-[var(--line)] bg-[var(--glass)] p-5">
           <h2 className="display-font text-lg font-semibold">Client profile</h2>
-          <Field
+          <LabeledField
             label="Street"
             value={clientProfile.street ?? ''}
             onChange={(v) => setClientProfile({ ...clientProfile, street: v || undefined })}
           />
-          <Field
+          <LabeledField
             label="Address number"
             value={clientProfile.addressNumber ?? ''}
             onChange={(v) => setClientProfile({ ...clientProfile, addressNumber: v || undefined })}
           />
-          <Field
+          <LabeledField
             label="Lawn area (m²)"
             type="number"
             value={clientProfile.lawnAreaM2?.toString() ?? ''}
             onChange={(v) => setClientProfile({ ...clientProfile, lawnAreaM2: v ? Number(v) : undefined })}
           />
-          <TextArea
+          <LabeledTextArea
             label="Bio"
             value={clientProfile.bio ?? ''}
             onChange={(v) => setClientProfile({ ...clientProfile, bio: v || undefined })}
@@ -185,41 +178,10 @@ export default function UserProfileEditPage() {
       {user.role === 'mower' && (
         <div className="space-y-4 rounded-lg border border-[var(--line)] bg-[var(--glass)] p-5">
           <h2 className="display-font text-lg font-semibold">Mower profile</h2>
-          <Field
-            label="Suburb"
-            value={mowerProfile.suburb ?? ''}
-            onChange={(v) => setMowerProfile({ ...mowerProfile, suburb: v || undefined })}
-          />
-          <Field
-            label="Postcode"
-            value={mowerProfile.postcode ?? ''}
-            onChange={(v) => setMowerProfile({ ...mowerProfile, postcode: v || undefined })}
-          />
-          <Field
-            label="Service radius (km)"
-            type="number"
-            value={mowerProfile.serviceRadiusKm?.toString() ?? '0'}
-            onChange={(v) => setMowerProfile({ ...mowerProfile, serviceRadiusKm: Number(v) || 0 })}
-          />
-          <Field
-            label="Rate per m² ($)"
-            type="number"
-            value={mowerProfile.ratePerM2?.toString() ?? ''}
-            onChange={(v) => setMowerProfile({ ...mowerProfile, ratePerM2: v ? Number(v) : undefined })}
-          />
-          <Field
-            label="Public contact email"
-            type="email"
-            value={publicContactEmail}
-            onChange={setPublicContactEmail}
-          />
-          <p className="-mt-2 text-xs text-[var(--muted)]">
-            Optional. Clients can use this address from the hire directory; your account email is never shared.
-          </p>
-          <TextArea
-            label="Bio"
-            value={mowerProfile.bio ?? ''}
-            onChange={(v) => setMowerProfile({ ...mowerProfile, bio: v || undefined })}
+          <MowerProfileFields
+            draft={mowerProfileDraft}
+            onChange={setMowerProfileDraft}
+            publicContactDescription="Optional. Clients can use this address from the hire directory; your account email is never shared."
           />
         </div>
       )}
@@ -244,43 +206,5 @@ export default function UserProfileEditPage() {
         </button>
       </div>
     </section>
-  )
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  type = 'text',
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  type?: string
-}) {
-  return (
-    <div>
-      <label className="mb-1 block text-sm font-medium">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none"
-      />
-    </div>
-  )
-}
-
-function TextArea({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <div>
-      <label className="mb-1 block text-sm font-medium">{label}</label>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={4}
-        className="w-full rounded-md border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none"
-      />
-    </div>
   )
 }

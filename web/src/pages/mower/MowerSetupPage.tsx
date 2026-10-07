@@ -1,58 +1,34 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { MowerProfileFields } from '../../components/MowerProfileFields'
 import { useAuth } from '../../contexts/AuthContext'
 import { updateUser } from '../../lib/users'
-import { normalizePublicContactEmail } from '../../lib/mowerContacts'
+import {
+  createMowerProfileDraft,
+  serializeMowerProfileDraft,
+  validateMowerProfileDraft,
+} from '../../lib/mowerProfileForm'
 
 export default function MowerSetupPage() {
   const { user, refresh } = useAuth()
   const navigate = useNavigate()
-  const [suburb, setSuburb] = useState('')
-  const [postcode, setPostcode] = useState('')
-  const [serviceRadiusKm, setRadius] = useState('5')
-  const [ratePerM2, setRate] = useState('')
-  const [bio, setBio] = useState('')
-  const [publicContactEmail, setPublicContactEmail] = useState('')
+  const [draft, setDraft] = useState(() => createMowerProfileDraft(null, null, 'setup'))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (user?.mowerProfile) {
-      setSuburb(user.mowerProfile.suburb ?? '')
-      setPostcode(user.mowerProfile.postcode ?? '')
-      setRadius(String(user.mowerProfile.serviceRadiusKm ?? 5))
-      setRate(user.mowerProfile.ratePerM2 ? String(user.mowerProfile.ratePerM2) : '')
-      setBio(user.mowerProfile.bio ?? '')
-      setPublicContactEmail(user.publicContactEmail ?? '')
-    }
+    if (user) setDraft(createMowerProfileDraft(user.mowerProfile, user.publicContactEmail, 'setup'))
   }, [user])
 
   const handleSave = async () => {
     if (!user) return
-    if (!suburb.trim() || !/^\d{4}$/.test(postcode.trim())) {
-      setError('Suburb and 4-digit postcode are required.')
-      return
-    }
-    const r = Number(serviceRadiusKm)
-    if (!Number.isFinite(r) || r <= 0) {
-      setError('Service radius must be a positive number.')
-      return
-    }
+    const validationError = validateMowerProfileDraft(draft, 'setup')
+    if (validationError) return setError(validationError)
     setSaving(true)
     setError(null)
     try {
-      await updateUser({
-        suburb: suburb.trim(),
-        postcode: postcode.trim(),
-        publicContactEmail: normalizePublicContactEmail(publicContactEmail),
-        mowerProfile: {
-          suburb: suburb.trim(),
-          postcode: postcode.trim(),
-          serviceRadiusKm: r,
-          ratePerM2: ratePerM2 ? Number(ratePerM2) : undefined,
-          bio: bio.trim() || undefined,
-        },
-      })
+      const profile = serializeMowerProfileDraft(draft)
+      await updateUser(profile)
       await refresh()
       navigate('/mower', { replace: true })
     } catch (err) {
@@ -71,28 +47,12 @@ export default function MowerSetupPage() {
       </p>
 
       <div className="space-y-4 rounded-lg border border-[var(--line)] bg-[var(--glass)] p-5">
-        <Field label="Suburb" value={suburb} onChange={setSuburb} />
-        <Field label="Postcode" value={postcode} onChange={setPostcode} inputMode="numeric" maxLength={4} />
-        <Field label="Service radius (km)" value={serviceRadiusKm} onChange={setRadius} type="number" />
-        <Field label="Rate per m² ($)" value={ratePerM2} onChange={setRate} type="number" />
-        <Field
-          label="Public contact email"
-          value={publicContactEmail}
-          onChange={setPublicContactEmail}
-          type="email"
+        <MowerProfileFields
+          draft={draft}
+          onChange={setDraft}
+          bioRows={3}
+          publicContactDescription="Optional. This is shown only when a client chooses to email you from the hire directory; your account email stays private."
         />
-        <p className="-mt-2 text-xs text-[var(--muted)]">
-          Optional. This is shown only when a client chooses to email you from the hire directory; your account email stays private.
-        </p>
-        <div>
-          <label className="mb-1 block text-sm font-medium">Bio</label>
-          <textarea
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            rows={3}
-            className="w-full rounded-md border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none"
-          />
-        </div>
       </div>
 
       {error && <p className="text-sm text-[var(--error)]">{error}</p>}
@@ -105,35 +65,5 @@ export default function MowerSetupPage() {
         {saving ? 'Saving…' : 'Save profile'}
       </button>
     </section>
-  )
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  type = 'text',
-  inputMode,
-  maxLength,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  type?: string
-  inputMode?: 'numeric' | 'decimal'
-  maxLength?: number
-}) {
-  return (
-    <div>
-      <label className="mb-1 block text-sm font-medium">{label}</label>
-      <input
-        type={type}
-        value={value}
-        inputMode={inputMode}
-        maxLength={maxLength}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none"
-      />
-    </div>
   )
 }
