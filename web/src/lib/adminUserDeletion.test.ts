@@ -8,10 +8,15 @@ const migrations: { migrations: { sql: string }[] } = JSON.parse(readFileSync(ne
 const tools: Tool[] = JSON.parse(readFileSync(new URL('mcp.json', root), 'utf8')).tools
 let db: DatabaseSync
 
-function call(userId: string, targetId: string) {
+function call(userId: string, targetId: string, photoKeys: string[] = []) {
   const action = tools.find((tool) => tool.name === 'admin_delete_user')
   if (!action) throw new Error('Missing admin_delete_user')
-  const values: Record<string, string | number | null> = { __user_id: userId, __now: 1_700_000_000_000, user_id: targetId }
+  const values: Record<string, string | number | null> = {
+    __user_id: userId,
+    __now: 1_700_000_000_000,
+    user_id: targetId,
+    photo_keys: JSON.stringify(photoKeys),
+  }
   const bind = (sql: string) => {
     const args: (string | number | null)[] = []
     const text = sql.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, (_match, key: string) => {
@@ -96,6 +101,19 @@ describe('admin_delete_user', () => {
     expect(db.prepare('SELECT id FROM street_group_interests').all()).toEqual([])
     expect(db.prepare('SELECT id FROM mower_reviews').all()).toEqual([])
     expect(db.prepare('SELECT id FROM history_records').all()).toEqual([])
+  })
+
+  it('durably queues every tracked photo and caller-supplied legacy photo before deleting an account', () => {
+    db.prepare("INSERT INTO photo_objects (user_id, storage_key, created_at) VALUES ('departing-mower', 'u/departing-mower/avatars/current.png', 1), ('departing-mower', 'u/departing-mower/lawns/before.png', 1)").run()
+
+    call('departing-mower', 'departing-mower', ['avatars/departing-mower/legacy.png', 'u/other-user/avatars/blocked.png'])
+
+    expect(db.prepare("SELECT storage_key FROM photo_cleanup_jobs WHERE user_id = 'departing-mower' ORDER BY storage_key").all()).toEqual([
+      { storage_key: 'avatars/departing-mower/legacy.png' },
+      { storage_key: 'u/departing-mower/avatars/current.png' },
+      { storage_key: 'u/departing-mower/lawns/before.png' },
+    ])
+    expect(db.prepare("SELECT storage_key FROM photo_cleanup_jobs WHERE storage_key = 'u/other-user/avatars/blocked.png'").all()).toEqual([])
   })
 
   it('rolls back all cleanup if a dependent delete fails', () => {

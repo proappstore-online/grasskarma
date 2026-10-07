@@ -159,9 +159,12 @@ export async function adminDeleteUser(userId: string): Promise<void> {
 // The action binds `user_id` to the verified caller when used here. It shares
 // the full transactional cleanup path with administrator deletions while
 // keeping normal users unable to target any other account.
-export async function deleteOwnAccount(): Promise<void> {
+export async function deleteOwnAccount(photoKeys: string[] = []): Promise<void> {
   await ensureMigrated()
   const userId = app.auth.user?.id
   if (!userId) throw new Error('Not signed in')
-  await x('admin_delete_user', { user_id: userId })
+  // The action copies all tracked objects to the durable cleanup queue in the
+  // same transaction as the account deletion. `photoKeys` covers legacy URLs
+  // from before tracking was introduced.
+  await x('admin_delete_user', { user_id: userId, photo_keys: JSON.stringify(photoKeys) })
 }

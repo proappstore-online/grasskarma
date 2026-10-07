@@ -42,8 +42,12 @@ authentication. No tracking, advertising, or analytics cookies.
 
 ## Data deletion
 
-Delete your account from [dashboard.proappstore.online](https://dashboard.proappstore.online).
-That removes all data Grasskarma stored for you, alongside the
+Delete your account from Grasskarma's **Account settings** page. The app
+removes its database records and queues every tracked avatar and lawn photo for
+deletion from public storage. If a storage request is interrupted, the queued
+cleanup is retried the next time you use the app. To delete your platform
+identity as well, use [dashboard.proappstore.online](https://dashboard.proappstore.online).
+That is separate from the
 platform-level deletion described in the [platform privacy policy](https://proappstore.online/privacy#data-deletion).
 
 ## Contact

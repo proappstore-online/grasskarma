@@ -37,7 +37,7 @@ All timestamps are epoch-millis integers. Map row ↔ domain in the matching `we
 - `schedules.ts` — `listSchedules(groupId)`, `listSchedulesForMower`, `createSchedule`, `updateSchedule`, `markCompleted`, `deleteSchedule`.
 - `reviews.ts` — `createReview`, `listReviews(mowerId)`, `updateReview`, `deleteReview`, `averageRating`.
 - `history.ts` — `recordHistory`, `listHistory(mowerId)`.
-- `photos.ts` — `uploadAvatar / uploadLawnPhoto` (via `app.storage.uploadPublic`), `deletePhoto`.
+- `photos.ts` — user-scoped public avatar/lawn uploads, replacement cleanup, and a durable D1 cleanup queue. Uploads use `app.storage.uploadUserPublic`; never use app-owner `uploadPublic` for user photos. A replacement persists its new database reference before the old object is queued, and account deletion queues every tracked object for idempotent retry.
 
 Pages and admin operations always go through these — never call `app.db.*` directly in a page.
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { getUser, updateUser } from '../../lib/users'
-import { uploadAvatar } from '../../lib/photos'
+import { replaceAvatar } from '../../lib/photos'
 import { normalizePublicContactEmail } from '../../lib/mowerContacts'
 import type { User, ClientProfile, MowerProfile } from '../../models'
 
@@ -75,7 +75,9 @@ export default function UserProfileEditPage() {
     setUploading(true)
     setError(null)
     try {
-      const url = await uploadAvatar(userId, file)
+      // replaceAvatar persists the new URL before it queues the previous
+      // object for deletion, so a failed save can never remove the live image.
+      const url = await replaceAvatar(userId, photoUrl, file)
       setPhotoUrl(url)
     } catch (err) {
       console.error(err)

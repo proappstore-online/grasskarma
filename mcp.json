@@ -156,6 +156,47 @@
       "requires_auth": true
     },
     {
+      "name": "record_photo_object",
+      "description": "Record a newly uploaded caller-owned avatar or lawn-photo key for durable retention cleanup",
+      "operation": "execute",
+      "sql": "INSERT OR IGNORE INTO photo_objects (user_id, storage_key, created_at) SELECT :__user_id, :storage_key, :__now WHERE :storage_key GLOB ('u/' || :__user_id || '/avatars/*') OR :storage_key GLOB ('u/' || :__user_id || '/lawns/*')",
+      "params": {
+        "storage_key": { "type": "string" }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "queue_photo_cleanup",
+      "description": "Durably queue deletion of caller-owned avatar or lawn-photo keys; safe to retry",
+      "operation": "execute",
+      "sql": "INSERT OR IGNORE INTO photo_cleanup_jobs (user_id, storage_key, created_at) SELECT :__user_id, value, :__now FROM json_each(:storage_keys) WHERE typeof(value) = 'text' AND (value GLOB ('u/' || :__user_id || '/avatars/*') OR value GLOB ('u/' || :__user_id || '/lawns/*') OR value GLOB ('avatars/' || :__user_id || '/*') OR value GLOB ('lawns/' || :__user_id || '/*'))",
+      "params": {
+        "storage_keys": { "type": "string" }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_photo_cleanup_jobs",
+      "description": "List the authenticated caller's pending avatar/lawn-photo cleanup jobs",
+      "operation": "query",
+      "sql": "SELECT storage_key FROM photo_cleanup_jobs WHERE user_id = :__user_id ORDER BY created_at ASC",
+      "params": {},
+      "requires_auth": true
+    },
+    {
+      "name": "complete_photo_cleanup",
+      "description": "Acknowledge successful deletion of one caller-owned avatar or lawn-photo object",
+      "operation": "batch",
+      "statements": [
+        "DELETE FROM photo_cleanup_jobs WHERE user_id = :__user_id AND storage_key = :storage_key",
+        "DELETE FROM photo_objects WHERE user_id = :__user_id AND storage_key = :storage_key"
+      ],
+      "params": {
+        "storage_key": { "type": "string" }
+      },
+      "requires_auth": true
+    },
+    {
       "name": "admin_set_role",
       "description": "Set any user's role (platform admins only — caller must be a user with role='admin')",
       "operation": "execute",
@@ -172,9 +213,11 @@
     },
     {
       "name": "admin_delete_user",
-      "description": "Atomically delete an account and clean its group memberships, delegated group-admin role (promoting a remaining member where possible), mower assignments/interests, votes, reviews, and job history. Callers may delete only themselves; platform admins may delete any user.",
+      "description": "Atomically delete an account, durably queue every tracked avatar/lawn photo for cleanup, and clean its group memberships, delegated group-admin role (promoting a remaining member where possible), mower assignments/interests, votes, reviews, and job history. Callers may delete only themselves; platform admins may delete any user.",
       "operation": "batch",
       "statements": [
+        "INSERT OR IGNORE INTO photo_cleanup_jobs (user_id, storage_key, created_at) SELECT user_id, storage_key, :__now FROM photo_objects WHERE user_id = :user_id AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
+        "INSERT OR IGNORE INTO photo_cleanup_jobs (user_id, storage_key, created_at) SELECT :user_id, value, :__now FROM json_each(COALESCE(:photo_keys, '[]')) WHERE typeof(value) = 'text' AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) AND (value GLOB ('u/' || :user_id || '/avatars/*') OR value GLOB ('u/' || :user_id || '/lawns/*') OR value GLOB ('avatars/' || :user_id || '/*') OR value GLOB ('lawns/' || :user_id || '/*'))",
         "UPDATE street_groups SET admin_ids = CASE WHEN EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value != :user_id) THEN (SELECT COALESCE(json_group_array(value), json_array()) FROM json_each(admin_ids) WHERE value != :user_id) ELSE COALESCE((SELECT json_array(member.value) FROM json_each(member_ids) member JOIN users successor ON successor.id = member.value WHERE member.value != :user_id AND successor.role IN ('client', 'admin') ORDER BY member.key LIMIT 1), json_array()) END, member_ids = (SELECT COALESCE(json_group_array(value), json_array()) FROM json_each(member_ids) WHERE value != :user_id), assigned_mower_id = CASE WHEN assigned_mower_id = :user_id THEN NULL ELSE assigned_mower_id END, status = CASE WHEN NOT EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value != :user_id) AND NOT EXISTS (SELECT 1 FROM json_each(member_ids) member JOIN users successor ON successor.id = member.value WHERE member.value != :user_id AND successor.role IN ('client', 'admin')) THEN 'archived' ELSE status END, updated_at = :__now WHERE (assigned_mower_id = :user_id OR EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :user_id) OR EXISTS (SELECT 1 FROM json_each(member_ids) WHERE value = :user_id)) AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
         "DELETE FROM mower_interest_votes WHERE voter_id = :user_id AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
         "DELETE FROM mower_interest_votes WHERE interest_id IN (SELECT id FROM mower_interests WHERE mower_id = :user_id) AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
@@ -188,6 +231,11 @@
       "params": {
         "user_id": {
           "type": "string"
+        },
+        "photo_keys": {
+          "type": "string",
+          "default": "[]",
+          "optional": true
         }
       },
       "requires_auth": true

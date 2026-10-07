@@ -3,6 +3,7 @@ import type { AuthProvider as SignInProvider, User as FasUser } from '@proappsto
 import { useProGate } from '@proappstore/sdk/hooks'
 import { app } from '../lib/app'
 import { getUser, createUser } from '../lib/users'
+import { drainPendingPhotoCleanup } from '../lib/photos'
 import type { User, Role } from '../models'
 
 type Gate = 'loading' | 'signed-out' | 'no-role' | 'ready'
@@ -38,6 +39,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (gateState.gate === 'ready' && gateState.user) {
+      // This also covers an account that was deleted after its cleanup queue
+      // was committed but before the browser could finish deleting R2 files.
+      void drainPendingPhotoCleanup()
       void loadUser(gateState.user)
     } else {
       setUser(null)

@@ -171,6 +171,30 @@ export const MIGRATIONS = [
       );
     `,
   },
+  {
+    name: '0005_photo_cleanup_ledger',
+    // User-public R2 objects cannot participate in a D1 transaction. Keep an
+    // additive, durable record of each object and of every requested cleanup,
+    // so a network failure can never turn an account deletion into a permanent
+    // public-photo leak. The authenticated owner drains their own queue.
+    sql: `
+      CREATE TABLE IF NOT EXISTS photo_objects (
+        user_id     TEXT NOT NULL,
+        storage_key TEXT NOT NULL,
+        created_at  INTEGER NOT NULL,
+        PRIMARY KEY (user_id, storage_key)
+      );
+      CREATE INDEX IF NOT EXISTS idx_photo_objects_user ON photo_objects(user_id);
+
+      CREATE TABLE IF NOT EXISTS photo_cleanup_jobs (
+        user_id     TEXT NOT NULL,
+        storage_key TEXT NOT NULL,
+        created_at  INTEGER NOT NULL,
+        PRIMARY KEY (user_id, storage_key)
+      );
+      CREATE INDEX IF NOT EXISTS idx_photo_cleanup_jobs_user ON photo_cleanup_jobs(user_id);
+    `,
+  },
 ]
 
 let migrated = false
