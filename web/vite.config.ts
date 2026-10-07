@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { platformNavigationDenylist } from './src/pwa'
 
 export default defineConfig({
   plugins: [
@@ -12,6 +13,10 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2,wasm,json,md}'],
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
+        // OAuth is a top-level navigation through `/.pas/auth/*`. Without this
+        // exclusion Workbox's SPA navigation fallback returns index.html rather
+        // than letting the platform issue the new session cookie.
+        navigateFallbackDenylist: platformNavigationDenylist,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
