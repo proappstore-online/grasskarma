@@ -1,5 +1,5 @@
 import { ensureMigrated } from './db'
-import { q, x } from './actions'
+import { ActionRefusedError, q, xOne, xBatch } from './actions'
 import type { StreetGroupRow, StreetGroupInterestRow } from './db'
 import type { StreetGroup, StreetGroupInterest, StreetGroupStatus } from '../models'
 
@@ -145,17 +145,27 @@ export async function createGroup(input: GroupCreate): Promise<StreetGroup> {
   const id = crypto.randomUUID()
   // The caller (`:__user_id`) is always the sole initial admin + member —
   // `input.createdBy` is the caller's own id at every call site.
-  await x('create_group', {
-    id,
-    name: input.name,
-    street_name: location.streetName,
-    suburb: location.suburb,
-    postcode: location.postcode,
-    state: input.state ?? null,
-    country: input.country ?? null,
-    center_lat: input.centerLat ?? null,
-    center_lng: input.centerLng ?? null,
-  })
+  try {
+    await xBatch('create_group', {
+      id,
+      name: input.name,
+      street_name: location.streetName,
+      suburb: location.suburb,
+      postcode: location.postcode,
+      state: input.state ?? null,
+      country: input.country ?? null,
+      center_lat: input.centerLat ?? null,
+      center_lng: input.centerLng ?? null,
+    })
+  } catch (error) {
+    // A concurrent create is a refusal, but expose the durable winner as the
+    // existing location conflict rather than pretending this create succeeded.
+    if (error instanceof ActionRefusedError) {
+      const winner = await findGroupByLocation(location)
+      if (winner) throw new GroupLocationConflictError(winner)
+    }
+    throw error
+  }
   const g = await getGroup(id)
   if (g) return g
 
@@ -199,33 +209,33 @@ export async function updateGroup(id: string, patch: GroupPatch): Promise<void> 
   if ('status' in patch) set('set_status', 'status', patch.status)
   if ('assignedMowerId' in patch) set('set_assigned_mower_id', 'assigned_mower_id', patch.assignedMowerId ?? null)
   if (Object.keys(params).length === 1) return
-  await x('update_group', params)
+  await xOne('update_group', params)
 }
 
 export async function addMember(groupId: string, userId: string): Promise<void> {
   await ensureMigrated()
   // The action guards + de-dupes in SQL (self-join, or a group/platform admin).
-  await x('add_group_member', { group_id: groupId, user_id: userId })
+  await xBatch('add_group_member', { group_id: groupId, user_id: userId })
 }
 
 export async function removeMember(groupId: string, userId: string): Promise<void> {
   await ensureMigrated()
-  await x('remove_group_member', { group_id: groupId, user_id: userId })
+  await xBatch('remove_group_member', { group_id: groupId, user_id: userId })
 }
 
 export async function addAdmin(groupId: string, userId: string): Promise<void> {
   await ensureMigrated()
-  await x('add_group_admin', { group_id: groupId, user_id: userId })
+  await xOne('add_group_admin', { group_id: groupId, user_id: userId })
 }
 
 export async function removeAdmin(groupId: string, userId: string): Promise<void> {
   await ensureMigrated()
-  await x('remove_group_admin', { group_id: groupId, user_id: userId })
+  await xOne('remove_group_admin', { group_id: groupId, user_id: userId })
 }
 
 export async function deleteGroup(id: string): Promise<void> {
   await ensureMigrated()
-  await x('delete_group', { group_id: id })
+  await xBatch('delete_group', { group_id: id })
 }
 
 // ---------------------------------------------------------------------------
@@ -238,7 +248,7 @@ export async function createGroupInterest(groupId: string, userId: string, messa
   const now = Date.now()
   // The applicant is always the verified caller (`:__user_id`); `userId` is the
   // caller's own id at every call site.
-  await x('create_group_interest', { id, group_id: groupId, message })
+  await xOne('create_group_interest', { id, group_id: groupId, message })
   return { id, groupId, userId, message, createdAt: now }
 }
 
@@ -250,7 +260,7 @@ export async function listGroupInterests(groupId: string): Promise<StreetGroupIn
 
 export async function deleteGroupInterest(id: string): Promise<void> {
   await ensureMigrated()
-  await x('delete_group_interest', { id })
+  await xOne('delete_group_interest', { id })
 }
 
 /**
@@ -260,5 +270,5 @@ export async function deleteGroupInterest(id: string): Promise<void> {
  */
 export async function approveGroupInterest(groupId: string, interestId: string, userId: string): Promise<void> {
   await ensureMigrated()
-  await x('approve_group_interest', { group_id: groupId, interest_id: interestId, user_id: userId })
+  await xBatch('approve_group_interest', { group_id: groupId, interest_id: interestId, user_id: userId })
 }

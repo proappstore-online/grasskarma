@@ -42,11 +42,14 @@ function call(name: string, userId: string, params: Record<string, unknown> = {}
   const statements = tool.statements ?? [tool.sql!]
   db.exec('BEGIN')
   try {
+    let result: { changes: number | bigint } | undefined
     for (const sql of statements) {
       const { text, args } = bind(sql, params, userId)
-      db.prepare(text).run(...args)
+      result = db.prepare(text).run(...args)
     }
     db.exec('COMMIT')
+    if (!result) throw new Error(`Action ${name} did not execute`)
+    return result
   } catch (error) {
     db.exec('ROLLBACK')
     throw error
@@ -144,6 +147,18 @@ describe('street-group membership actions', () => {
 
     expect(members()).toEqual(['admin', 'client'])
     expect(pointer('client')).toBe('g1')
+  })
+
+  it('treats an already-removed or stale member row as a no-op without touching the group', () => {
+    user('admin')
+    user('client')
+    group('g1', ['admin'], ['admin'])
+
+    const result = call('remove_group_member', 'admin', { group_id: 'g1', user_id: 'client' })
+
+    expect(result.changes).toBe(0)
+    expect(members()).toEqual(['admin'])
+    expect(pointer('client')).toBeNull()
   })
 
   it('clears every group pointer before an authorized group deletion, including stale pointers', () => {

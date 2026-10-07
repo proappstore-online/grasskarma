@@ -41,9 +41,14 @@ export default function AdminUserDetailPage() {
   const handleRole = async (role: Role) => {
     if (!user) return
     setBusy(true)
+    setError(null)
     try {
       await adminSetRole(user.id, role)
-      setUser({ ...user, role })
+      await load()
+    } catch (err) {
+      console.error(err)
+      await load()
+      setError('Role change was refused. User details were reloaded.')
     } finally {
       setBusy(false)
     }
@@ -53,16 +58,21 @@ export default function AdminUserDetailPage() {
     if (!user) return
     if (!confirm(`Delete ${user.name ?? user.email ?? user.id}? This cannot be undone.`)) return
     setBusy(true)
+    setError(null)
     try {
       await adminDeleteUser(user.id)
       navigate('/admin/users')
+    } catch (err) {
+      console.error(err)
+      await load()
+      setError('User deletion was refused. User details were reloaded.')
     } finally {
       setBusy(false)
     }
   }
 
   if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (error) return <p className="text-sm text-[var(--error)]">{error}</p>
+  if (error && !user) return <p className="text-sm text-[var(--error)]">{error}</p>
   if (!user) return <p className="text-sm text-[var(--muted)]">User not found.</p>
 
   return (
@@ -105,6 +115,8 @@ export default function AdminUserDetailPage() {
           ))}
         </div>
       </div>
+
+      {error && <p className="text-sm text-[var(--error)]" role="alert">{error}</p>}
 
       {user.role === 'mower' && rating && (
         <div className="rounded-lg border border-[var(--line)] bg-[var(--glass)] p-5">

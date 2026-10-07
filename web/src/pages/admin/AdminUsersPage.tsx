@@ -29,11 +29,16 @@ export default function AdminUsersPage() {
 
   const handleRoleChange = async (id: string, role: Role) => {
     setUpdatingId(id)
+    setError(null)
     try {
       await adminSetRole(id, role)
-      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)))
+      // The role may have changed in another session. Always read the server's
+      // authoritative list instead of committing an optimistic local patch.
+      await load()
     } catch (err) {
       console.error(err)
+      await load()
+      setError('Role change was refused. Users were reloaded.')
     } finally {
       setUpdatingId(null)
     }
@@ -42,11 +47,14 @@ export default function AdminUsersPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this user? This cannot be undone.')) return
     setUpdatingId(id)
+    setError(null)
     try {
       await adminDeleteUser(id)
-      setUsers((prev) => prev.filter((u) => u.id !== id))
+      await load()
     } catch (err) {
       console.error(err)
+      await load()
+      setError('User deletion was refused. Users were reloaded.')
     } finally {
       setUpdatingId(null)
     }

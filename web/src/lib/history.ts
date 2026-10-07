@@ -1,5 +1,5 @@
 import { ensureMigrated } from './db'
-import { q, x } from './actions'
+import { q, xOne } from './actions'
 import type { HistoryRecordRow } from './db'
 import type { HistoryRecord } from '../models'
 
@@ -34,7 +34,7 @@ export async function recordHistory(input: HistoryCreate): Promise<HistoryRecord
   const date = input.date ?? Date.now()
   // The mower is always the verified caller (`:__user_id`); `input.mowerId` is
   // the caller's own id.
-  await x('record_history', {
+  await xOne('record_history', {
     id,
     group_id: input.groupId ?? null,
     schedule_id: input.scheduleId ?? null,

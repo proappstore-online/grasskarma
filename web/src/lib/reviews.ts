@@ -1,5 +1,5 @@
 import { ensureMigrated } from './db'
-import { q, x } from './actions'
+import { q, xOne } from './actions'
 import type { MowerReviewRow } from './db'
 import type { MowerReview } from '../models'
 
@@ -33,7 +33,7 @@ export async function createReview(input: ReviewCreate): Promise<MowerReview> {
   const now = Date.now()
   // The reviewer is always the verified caller (`:__user_id`); `input.reviewerId`
   // is the caller's own id.
-  await x('create_review', {
+  await xOne('create_review', {
     id,
     mower_id: input.mowerId,
     group_id: input.groupId ?? null,
@@ -78,12 +78,12 @@ export async function updateReview(id: string, patch: ReviewPatch): Promise<void
     params.comment = patch.comment ?? null
   }
   if (Object.keys(params).length === 1) return
-  await x('update_review', params)
+  await xOne('update_review', params)
 }
 
 export async function deleteReview(id: string): Promise<void> {
   await ensureMigrated()
-  await x('delete_review', { id })
+  await xOne('delete_review', { id })
 }
 
 export async function averageRating(mowerId: string): Promise<{ average: number; count: number }> {

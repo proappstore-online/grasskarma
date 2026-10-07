@@ -28,9 +28,14 @@ export default function AdminGroupsPage() {
 
   const handleStatus = async (id: string, status: StreetGroupStatus) => {
     setBusyId(id)
+    setError(null)
     try {
       await updateGroup(id, { status })
-      setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, status } : g)))
+      await load()
+    } catch (err) {
+      console.error(err)
+      await load()
+      setError('Group update was refused. Groups were reloaded.')
     } finally {
       setBusyId(null)
     }
@@ -39,9 +44,14 @@ export default function AdminGroupsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this group and all associated schedules / interests? This cannot be undone.')) return
     setBusyId(id)
+    setError(null)
     try {
       await deleteGroup(id)
-      setGroups((prev) => prev.filter((g) => g.id !== id))
+      await load()
+    } catch (err) {
+      console.error(err)
+      await load()
+      setError('Group deletion was refused. Groups were reloaded.')
     } finally {
       setBusyId(null)
     }

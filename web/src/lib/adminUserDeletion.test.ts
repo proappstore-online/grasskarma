@@ -28,11 +28,14 @@ function call(userId: string, targetId: string, photoKeys: string[] = []) {
 
   db.exec('BEGIN')
   try {
+    let result: { changes: number | bigint } | undefined
     for (const sql of action.statements ?? [action.sql!]) {
       const statement = bind(sql)
-      db.prepare(statement.text).run(...statement.args)
+      result = db.prepare(statement.text).run(...statement.args)
     }
     db.exec('COMMIT')
+    if (!result) throw new Error('admin_delete_user did not execute')
+    return result
   } catch (error) {
     db.exec('ROLLBACK')
     throw error
@@ -79,8 +82,9 @@ describe('admin_delete_user', () => {
   })
 
   it('does not alter references when the caller is not a platform admin', () => {
-    call('remaining-member', 'departing-mower')
+    const result = call('remaining-member', 'departing-mower')
 
+    expect(result.changes).toBe(0)
     expect(db.prepare("SELECT id FROM users WHERE id = 'departing-mower'").get()).toEqual({ id: 'departing-mower' })
     expect(db.prepare("SELECT assigned_mower_id FROM street_groups WHERE id = 'sole-admin-group'").get()).toEqual({ assigned_mower_id: 'departing-mower' })
     expect(db.prepare("SELECT mower_id FROM schedules WHERE id = 'schedule'").get()).toEqual({ mower_id: 'departing-mower' })

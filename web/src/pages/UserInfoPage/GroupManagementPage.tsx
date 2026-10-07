@@ -51,10 +51,11 @@ export default function GroupManagementPage() {
     setError(null)
     try {
       await approveGroupInterest(group.id, request.interest.id, request.interest.userId)
-      setRequests((current) => current.filter((item) => item.interest.id !== request.interest.id))
+      await load()
       setNotice(`${request.applicant?.name ?? 'The applicant'} is now a member.`)
     } catch (err) {
       console.error(err)
+      await load()
       setError('Could not approve that request. Nothing was changed.')
     } finally {
       setBusy(null)
@@ -66,10 +67,11 @@ export default function GroupManagementPage() {
     setError(null)
     try {
       await deleteGroupInterest(request.interest.id)
-      setRequests((current) => current.filter((item) => item.interest.id !== request.interest.id))
+      await load()
       setNotice('Join request declined.')
     } catch (err) {
       console.error(err)
+      await load()
       setError('Could not decline that request.')
     } finally {
       setBusy(null)
@@ -82,20 +84,21 @@ export default function GroupManagementPage() {
     setBusy('schedule')
     setError(null)
     try {
-      const schedule = await createSchedule({
+      await createSchedule({
         groupId: group.id,
         mowerId: group.assignedMowerId,
         dayOfWeek: dayOfWeek === '' ? null : Number(dayOfWeek),
         startTime: startTime || null,
         dueDate: dueDate ? new Date(dueDate).getTime() : null,
       })
-      setSchedules((current) => [...current, schedule])
+      await load()
       setDayOfWeek('')
       setStartTime('')
       setDueDate('')
       setNotice('Schedule created and assigned to the selected mower.')
     } catch (err) {
       console.error(err)
+      await load()
       setError('Could not create the schedule. Check the date, day and time.')
     } finally {
       setBusy(null)
@@ -107,10 +110,11 @@ export default function GroupManagementPage() {
     setError(null)
     try {
       await updateSchedule(schedule.id, { status: 'skipped' })
-      setSchedules((current) => current.map((item) => item.id === schedule.id ? { ...item, status: 'skipped' } : item))
+      await load()
       setNotice('Schedule marked skipped.')
     } catch (err) {
       console.error(err)
+      await load()
       setError('Could not update that schedule.')
     } finally {
       setBusy(null)

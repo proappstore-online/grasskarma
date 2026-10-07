@@ -81,9 +81,14 @@ export default function MowersPage() {
     setError(null)
     try {
       await updateGroup(user.streetGroupId, { assignedMowerId: mowerId })
-      setAssignedMowerId(mowerId)
+      const group = await getGroup(user.streetGroupId)
+      setAssignedMowerId(group?.assignedMowerId ?? null)
+      setIsAdmin(!!group?.adminIds.includes(user.id))
     } catch (err) {
       console.error(err)
+      const group = await getGroup(user.streetGroupId).catch(() => null)
+      setAssignedMowerId(group?.assignedMowerId ?? null)
+      setIsAdmin(!!group?.adminIds.includes(user.id))
       setError('Could not assign that mower.')
     } finally {
       setVoting(null)

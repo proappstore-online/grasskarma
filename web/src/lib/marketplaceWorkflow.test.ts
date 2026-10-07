@@ -58,6 +58,15 @@ beforeEach(() => {
 })
 
 describe('marketplace workflow actions', () => {
+  it('does not report a role change after the caller loses platform-admin authority', () => {
+    user('platform-admin', 'admin')
+    user('member')
+    db.prepare("UPDATE users SET role = 'client' WHERE id = 'platform-admin'").run()
+
+    expect(call('admin_set_role', 'platform-admin', { user_id: 'member', role: 'mower' }).changes).toBe(0)
+    expect(db.prepare("SELECT role FROM users WHERE id = 'member'").get()).toEqual({ role: 'client' })
+  })
+
   it('approves a neighbour request atomically', () => {
     db.prepare("INSERT INTO street_group_interests (id, group_id, user_id, created_at) VALUES ('request', 'g1', 'applicant', 1)").run()
 
@@ -120,6 +129,18 @@ describe('marketplace workflow actions', () => {
     call('update_group', 'admin', { id: 'g1', set_assigned_mower_id: 1, assigned_mower_id: 'mower' })
 
     expect(call('create_schedule', 'applicant', { id: 'unauthorized', group_id: 'g1', day_of_week: null, start_time: null, mower_id: 'mower', due_date: null }).changes).toBe(0)
+  })
+
+  it('does not report a stale or unauthorized skip as a schedule update', () => {
+    db.prepare("INSERT INTO schedules (id, group_id, mower_id, status, created_at, updated_at) VALUES ('schedule', 'g1', 'mower', 'planned', 1, 1)").run()
+
+    expect(call('update_schedule', 'applicant', { id: 'schedule', set_status: 1, status: 'skipped' }).changes).toBe(0)
+    expect(db.prepare("SELECT status FROM schedules WHERE id = 'schedule'").get()).toEqual({ status: 'planned' })
+  })
+
+  it('does not report a stale group-admin action as a successful update', () => {
+    expect(call('update_group', 'applicant', { id: 'g1', set_status: 1, status: 'active' }).changes).toBe(0)
+    expect(db.prepare("SELECT status FROM street_groups WHERE id = 'g1'").get()).toEqual({ status: 'forming' })
   })
 
   it('completes a mower job and writes history in one transaction', () => {

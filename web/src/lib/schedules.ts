@@ -1,5 +1,5 @@
 import { ensureMigrated } from './db'
-import { q, x } from './actions'
+import { q, xOne, xBatch } from './actions'
 import type { ScheduleRow } from './db'
 import type { Schedule, ScheduleStatus } from '../models'
 
@@ -65,7 +65,7 @@ export async function createSchedule(input: ScheduleCreate): Promise<Schedule> {
   validateScheduleRange(input)
   const id = crypto.randomUUID()
   const now = Date.now()
-  const result = await x('create_schedule', {
+  await xOne('create_schedule', {
     id,
     group_id: input.groupId,
     day_of_week: input.dayOfWeek ?? null,
@@ -73,7 +73,6 @@ export async function createSchedule(input: ScheduleCreate): Promise<Schedule> {
     mower_id: input.mowerId ?? null,
     due_date: input.dueDate ?? null,
   })
-  if (result.changes !== 1) throw new Error('Schedule creation refused by server.')
   return {
     id,
     groupId: input.groupId,
@@ -116,8 +115,7 @@ export async function updateSchedule(id: string, patch: SchedulePatch): Promise<
   if ('dueDate' in patch) set('set_due_date', 'due_date', patch.dueDate ?? null)
   if ('completedAt' in patch) set('set_completed_at', 'completed_at', patch.completedAt ?? null)
   if (Object.keys(params).length === 1) return
-  const result = await x('update_schedule', params)
-  if (result.changes !== 1) throw new Error('Schedule update refused by server.')
+  await xOne('update_schedule', params)
 }
 
 export async function markCompleted(id: string): Promise<void> {
@@ -137,7 +135,7 @@ export interface ScheduleCompletion {
 /** Complete an assigned job and add its mower history entry atomically. */
 export async function completeSchedule(input: ScheduleCompletion): Promise<void> {
   await ensureMigrated()
-  await x('complete_schedule', {
+  await xBatch('complete_schedule', {
     schedule_id: input.scheduleId,
     group_id: input.groupId,
     history_id: crypto.randomUUID(),
@@ -151,5 +149,5 @@ export async function completeSchedule(input: ScheduleCompletion): Promise<void>
 
 export async function deleteSchedule(id: string): Promise<void> {
   await ensureMigrated()
-  await x('delete_schedule', { id })
+  await xOne('delete_schedule', { id })
 }

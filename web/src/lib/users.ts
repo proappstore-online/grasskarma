@@ -1,6 +1,6 @@
 import { app } from './app'
 import { ensureMigrated } from './db'
-import { q, x } from './actions'
+import { q, xOne, xBatch } from './actions'
 import type { UserRow } from './db'
 import type { User, Role, ClientProfile, MowerProfile } from '../models'
 import { getPublicMowerContact } from './mowerContacts'
@@ -93,7 +93,7 @@ export async function createUser(input: UserCreate): Promise<User> {
   await ensureMigrated()
   // `id` is ignored server-side — the row is always keyed to the verified
   // caller (`:__user_id`). `input.id` is the caller's own id at every call site.
-  await x('create_me', {
+  await xOne('create_me', {
     email: input.email ?? null,
     name: input.name ?? null,
     photo_url: input.photoUrl ?? null,
@@ -140,7 +140,7 @@ export async function updateUser(_id: string, patch: UserPatch): Promise<void> {
   if ('mowerProfile' in patch) set('set_mower_profile', 'mower_profile', patch.mowerProfile ? JSON.stringify(patch.mowerProfile) : null)
   if ('streetGroupId' in patch) set('set_street_group_id', 'street_group_id', patch.streetGroupId ?? null)
   if (Object.keys(params).length === 0) return
-  await x('update_me', params)
+  await xOne('update_me', params)
 }
 
 // Admin operations — the registered actions enforce that the caller is a
@@ -148,12 +148,12 @@ export async function updateUser(_id: string, patch: UserPatch): Promise<void> {
 
 export async function adminSetRole(userId: string, role: Role): Promise<void> {
   await ensureMigrated()
-  await x('admin_set_role', { user_id: userId, role })
+  await xOne('admin_set_role', { user_id: userId, role })
 }
 
 export async function adminDeleteUser(userId: string): Promise<void> {
   await ensureMigrated()
-  await x('admin_delete_user', { user_id: userId })
+  await xBatch('admin_delete_user', { user_id: userId })
 }
 
 // The action binds `user_id` to the verified caller when used here. It shares
@@ -166,5 +166,5 @@ export async function deleteOwnAccount(photoKeys: string[] = []): Promise<void> 
   // The action copies all tracked objects to the durable cleanup queue in the
   // same transaction as the account deletion. `photoKeys` covers legacy URLs
   // from before tracking was introduced.
-  await x('admin_delete_user', { user_id: userId, photo_keys: JSON.stringify(photoKeys) })
+  await xBatch('admin_delete_user', { user_id: userId, photo_keys: JSON.stringify(photoKeys) })
 }

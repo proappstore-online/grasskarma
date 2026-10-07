@@ -1,5 +1,5 @@
 import { ensureMigrated } from './db'
-import { q, x } from './actions'
+import { q, xOne } from './actions'
 import type { MowerInterestRow, MowerInterestVoteRow } from './db'
 import type { MowerInterest, MowerInterestVote } from '../models'
 
@@ -42,13 +42,13 @@ export async function createMowerInterest(groupId: string, mowerId: string, mess
   const now = Date.now()
   // The mower is always the verified caller (`:__user_id`); `mowerId` is the
   // caller's own id at every call site.
-  await x('create_mower_interest', { id, group_id: groupId, message })
+  await xOne('create_mower_interest', { id, group_id: groupId, message })
   return { id, groupId, mowerId, message, createdAt: now, updatedAt: now }
 }
 
 export async function deleteMowerInterest(id: string): Promise<void> {
   await ensureMigrated()
-  await x('delete_mower_interest', { id })
+  await xOne('delete_mower_interest', { id })
 }
 
 export async function castVote(interestId: string, voterId: string, vote: -1 | 1): Promise<void> {
@@ -56,7 +56,7 @@ export async function castVote(interestId: string, voterId: string, vote: -1 | 1
   // The voter is always the verified caller (`:__user_id`); `voterId` is the
   // caller's own id at every call site.
   void voterId
-  await x('cast_vote', { interest_id: interestId, vote })
+  await xOne('cast_vote', { interest_id: interestId, vote })
 }
 
 export async function listVotes(interestId: string): Promise<MowerInterestVote[]> {
