@@ -93,7 +93,7 @@ export default function StreetGroupSetupPage() {
     setBusy(true)
     setError(null)
     try {
-      await createGroupInterest(group.id, user.id, null)
+      await createGroupInterest(group.id, null)
       setRequestedIds((prev) => [...prev, group.id])
       setMessage(`Requested to join ${group.name}. The group admins will review your request.`)
     } catch (err) {
@@ -124,10 +124,9 @@ export default function StreetGroupSetupPage() {
         suburb: suburb.trim(),
         postcode: postcode.trim(),
         country: 'AU',
-        createdBy: user.id,
       })
       await addMember(g.id, user.id)
-      await updateUser(user.id, { streetGroupId: g.id })
+      await updateUser({ streetGroupId: g.id })
       await refresh()
       navigate('/app', { replace: true })
     } catch (err) {

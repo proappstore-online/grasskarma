@@ -41,7 +41,7 @@ export default function MowerStreetsPage() {
     if (!user) return
     setSavingId(groupId)
     try {
-      await createMowerInterest(groupId, user.id)
+      await createMowerInterest(groupId)
       setInterestedIds((prev) => new Set([...prev, groupId]))
     } catch (err) {
       console.error(err)

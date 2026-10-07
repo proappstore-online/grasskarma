@@ -77,7 +77,7 @@ export default function UserProfileEditPage() {
     try {
       // replaceAvatar persists the new URL before it queues the previous
       // object for deletion, so a failed save can never remove the live image.
-      const url = await replaceAvatar(userId, photoUrl, file)
+      const url = await replaceAvatar(photoUrl, file)
       setPhotoUrl(url)
     } catch (err) {
       console.error(err)
@@ -93,7 +93,7 @@ export default function UserProfileEditPage() {
     setError(null)
     setMessage(null)
     try {
-      await updateUser(user.id, {
+      await updateUser({
         name: name.trim() || null,
         suburb: suburb.trim() || null,
         postcode: postcode.trim() || null,

@@ -44,7 +44,6 @@ describe('photo retention cleanup', () => {
     mocks.delete.mockImplementation(async () => { events.push('storage:delete-old') })
 
     await replaceAvatar(
-      'alice',
       'https://api.example/v1/apps/grasskarma/public/u/alice/avatars/old.png',
       { name: 'new.png', type: 'image/png' } as File,
     )

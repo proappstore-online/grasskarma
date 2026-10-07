@@ -41,7 +41,7 @@ export default function MowerSetupPage() {
     setSaving(true)
     setError(null)
     try {
-      await updateUser(user.id, {
+      await updateUser({
         suburb: suburb.trim(),
         postcode: postcode.trim(),
         publicContactEmail: normalizePublicContactEmail(publicContactEmail),

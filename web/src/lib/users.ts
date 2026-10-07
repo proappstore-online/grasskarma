@@ -1,4 +1,5 @@
 import { app } from './app'
+import { requireAuthenticatedCaller } from './caller'
 import { ensureMigrated } from './db'
 import { q, xOne, xBatch } from './actions'
 import type { UserRow } from './db'
@@ -73,7 +74,6 @@ export async function listUsers(filter: UserSearch = {}): Promise<User[]> {
 }
 
 export interface UserCreate {
-  id: string
   publicContactEmail?: string | null
   email?: string | null
   name?: string | null
@@ -91,8 +91,9 @@ export interface UserCreate {
 
 export async function createUser(input: UserCreate): Promise<User> {
   await ensureMigrated()
-  // `id` is ignored server-side — the row is always keyed to the verified
-  // caller (`:__user_id`). `input.id` is the caller's own id at every call site.
+  const callerId = requireAuthenticatedCaller()
+  // The server keys the row to the verified caller (`:__user_id`). Use that
+  // same identity for the post-write read; callers never choose an owner.
   await xOne('create_me', {
     email: input.email ?? null,
     name: input.name ?? null,
@@ -107,7 +108,7 @@ export async function createUser(input: UserCreate): Promise<User> {
     client_profile: input.clientProfile ? JSON.stringify(input.clientProfile) : null,
     mower_profile: input.mowerProfile ? JSON.stringify(input.mowerProfile) : null,
   })
-  const u = await getUser(input.id)
+  const u = await getUser(callerId)
   if (!u) throw new Error('User not found after create')
   return u
 }
@@ -115,11 +116,10 @@ export async function createUser(input: UserCreate): Promise<User> {
 // Roles are deliberately absent: only the server-guarded adminSetRole action
 // may change one. A caller may point to a group only after the action verifies
 // their membership server-side.
-export type UserPatch = Partial<Omit<UserCreate, 'id' | 'role'>> & { streetGroupId?: string | null }
+export type UserPatch = Partial<Omit<UserCreate, 'role'>> & { streetGroupId?: string | null }
 
-// `id` is accepted for signature stability but the write always targets the
-// verified caller's own row (`:__user_id`) — every call site passes `user.id`.
-export async function updateUser(_id: string, patch: UserPatch): Promise<void> {
+/** Update the verified caller's own user record. */
+export async function updateUser(patch: UserPatch): Promise<void> {
   await ensureMigrated()
   const params: Record<string, unknown> = {}
   const set = (flag: string, col: string, val: unknown) => {
@@ -161,8 +161,7 @@ export async function adminDeleteUser(userId: string): Promise<void> {
 // keeping normal users unable to target any other account.
 export async function deleteOwnAccount(photoKeys: string[] = []): Promise<void> {
   await ensureMigrated()
-  const userId = app.auth.user?.id
-  if (!userId) throw new Error('Not signed in')
+  const userId = requireAuthenticatedCaller()
   // The action copies all tracked objects to the durable cleanup queue in the
   // same transaction as the account deletion. `photoKeys` covers legacy URLs
   // from before tracking was introduced.

@@ -132,7 +132,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!gateState.user) throw new Error('Not signed in')
     const fasUser = gateState.user
     const created = await createUser({
-      id: fasUser.id,
       role,
       name: fasUser.login,
       photoUrl: fasUser.avatarUrl,

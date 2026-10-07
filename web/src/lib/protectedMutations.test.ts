@@ -80,7 +80,6 @@ describe('street-group normalized lookup and duplicate conflicts', () => {
       streetName: ' maple street ',
       suburb: ' CARLTON ',
       postcode: ' 3053 ',
-      createdBy: 'caller',
     })
 
     await expect(result).rejects.toBeInstanceOf(GroupLocationConflictError)

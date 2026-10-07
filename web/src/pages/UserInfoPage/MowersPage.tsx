@@ -65,7 +65,7 @@ export default function MowersPage() {
     if (!user) return
     setVoting(interestId)
     try {
-      await castVote(interestId, user.id, vote)
+      await castVote(interestId, vote)
       const tally = await voteTally(interestId)
       setCards((prev) => prev.map((c) => (c.interest.id === interestId ? { ...c, myVote: vote, tally } : c)))
     } catch (err) {

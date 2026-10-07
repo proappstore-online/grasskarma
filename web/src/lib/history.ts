@@ -1,4 +1,5 @@
 import { ensureMigrated } from './db'
+import { requireAuthenticatedCaller } from './caller'
 import { q, xOne } from './actions'
 import type { HistoryRecordRow } from './db'
 import type { HistoryRecord } from '../models'
@@ -18,7 +19,6 @@ function rowToRecord(r: HistoryRecordRow): HistoryRecord {
 }
 
 export interface HistoryCreate {
-  mowerId: string
   streetName?: string | null
   groupId?: string | null
   scheduleId?: string | null
@@ -30,10 +30,10 @@ export interface HistoryCreate {
 
 export async function recordHistory(input: HistoryCreate): Promise<HistoryRecord> {
   await ensureMigrated()
+  const mowerId = requireAuthenticatedCaller()
   const id = crypto.randomUUID()
   const date = input.date ?? Date.now()
-  // The mower is always the verified caller (`:__user_id`); `input.mowerId` is
-  // the caller's own id.
+  // The mower is always the verified caller (`:__user_id`).
   await xOne('record_history', {
     id,
     group_id: input.groupId ?? null,
@@ -46,7 +46,7 @@ export async function recordHistory(input: HistoryCreate): Promise<HistoryRecord
   })
   return {
     id,
-    mowerId: input.mowerId,
+    mowerId,
     groupId: input.groupId ?? null,
     scheduleId: input.scheduleId ?? null,
     streetName: input.streetName ?? null,

@@ -1,4 +1,5 @@
 import { ensureMigrated } from './db'
+import { requireAuthenticatedCaller } from './caller'
 import { ActionRefusedError, q, xOne, xBatch } from './actions'
 import type { StreetGroupRow, StreetGroupInterestRow } from './db'
 import type { StreetGroup, StreetGroupInterest, StreetGroupStatus } from '../models'
@@ -99,7 +100,6 @@ export interface GroupCreate {
   country?: string | null
   centerLat?: number | null
   centerLng?: number | null
-  createdBy: string
 }
 
 export interface GroupLocation {
@@ -177,8 +177,7 @@ export async function createGroup(input: GroupCreate): Promise<StreetGroup> {
   if (existing) throw new GroupLocationConflictError(existing)
 
   const id = crypto.randomUUID()
-  // The caller (`:__user_id`) is always the sole initial admin + member —
-  // `input.createdBy` is the caller's own id at every call site.
+  // The caller (`:__user_id`) is always the sole initial admin + member.
   try {
     await xBatch('create_group', {
       id,
@@ -293,12 +292,12 @@ export async function deleteGroup(id: string): Promise<void> {
 // Interests (clients expressing interest in joining a group)
 // ---------------------------------------------------------------------------
 
-export async function createGroupInterest(groupId: string, userId: string, message: string | null = null): Promise<StreetGroupInterest> {
+export async function createGroupInterest(groupId: string, message: string | null = null): Promise<StreetGroupInterest> {
   await ensureMigrated()
+  const userId = requireAuthenticatedCaller()
   const id = crypto.randomUUID()
   const now = Date.now()
-  // The applicant is always the verified caller (`:__user_id`); `userId` is the
-  // caller's own id at every call site.
+  // The applicant is always the verified caller (`:__user_id`).
   await xOne('create_group_interest', { id, group_id: groupId, message })
   return { id, groupId, userId, message, createdAt: now }
 }

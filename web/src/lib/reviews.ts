@@ -1,4 +1,5 @@
 import { ensureMigrated } from './db'
+import { requireAuthenticatedCaller } from './caller'
 import { q, xOne } from './actions'
 import type { MowerReviewRow } from './db'
 import type { MowerReview } from '../models'
@@ -19,7 +20,6 @@ function rowToReview(r: MowerReviewRow): MowerReview {
 
 export interface ReviewCreate {
   mowerId: string
-  reviewerId: string
   rating: number
   comment?: string | null
   groupId?: string | null
@@ -28,11 +28,11 @@ export interface ReviewCreate {
 
 export async function createReview(input: ReviewCreate): Promise<MowerReview> {
   await ensureMigrated()
+  const reviewerId = requireAuthenticatedCaller()
   if (input.rating < 1 || input.rating > 5) throw new Error('rating must be 1..5')
   const id = crypto.randomUUID()
   const now = Date.now()
-  // The reviewer is always the verified caller (`:__user_id`); `input.reviewerId`
-  // is the caller's own id.
+  // The reviewer is always the verified caller (`:__user_id`).
   await xOne('create_review', {
     id,
     mower_id: input.mowerId,
@@ -44,7 +44,7 @@ export async function createReview(input: ReviewCreate): Promise<MowerReview> {
   return {
     id,
     mowerId: input.mowerId,
-    reviewerId: input.reviewerId,
+    reviewerId,
     groupId: input.groupId ?? null,
     scheduleId: input.scheduleId ?? null,
     rating: input.rating,
