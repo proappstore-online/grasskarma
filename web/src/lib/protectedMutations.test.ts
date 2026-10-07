@@ -16,7 +16,7 @@ vi.mock('./actions', () => ({
 }))
 
 import { adminDeleteUser, adminSetRole } from './users'
-import { addMember, approveGroupInterest, updateGroup } from './streetGroups'
+import { addMember, approveGroupInterest, createGroup, GroupLocationConflictError, listGroups, updateGroup } from './streetGroups'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -50,6 +50,46 @@ describe('protected mutation wrappers', () => {
 
     mocks.xBatch.mockRejectedValueOnce(new Error('approve_group_interest was refused by the server.'))
     await expect(approveGroupInterest('group', 'request', 'member')).rejects.toThrow('refused')
+  })
+})
+
+describe('street-group normalized lookup and duplicate conflicts', () => {
+  const canonicalRow = {
+    id: 'canonical', name: 'Maple Street neighbours', street_name: 'Maple Street', suburb: 'Carlton', postcode: '3053',
+    state: null, country: 'AU', center_lat: null, center_lng: null, admin_ids: '["admin"]', member_ids: '["admin"]',
+    assigned_mower_id: null, status: 'forming', created_at: 1, updated_at: 1,
+  }
+
+  it('trims location search input before using the case-insensitive action predicate', async () => {
+    await listGroups({ suburb: '  cArLtOn ', postcode: ' 3053 ' })
+
+    expect(mocks.q).toHaveBeenCalledWith('list_groups', {
+      status: null,
+      suburb: 'cArLtOn',
+      postcode: '3053',
+      mower_id: null,
+      limit: 200,
+    })
+  })
+
+  it('returns the canonical group on a normalized duplicate conflict', async () => {
+    mocks.q.mockResolvedValueOnce([canonicalRow])
+
+    const result = createGroup({
+      name: 'Maple Street neighbours',
+      streetName: ' maple street ',
+      suburb: ' CARLTON ',
+      postcode: ' 3053 ',
+      createdBy: 'caller',
+    })
+
+    await expect(result).rejects.toBeInstanceOf(GroupLocationConflictError)
+    await expect(result).rejects.toMatchObject({ existingGroup: expect.objectContaining({ id: 'canonical', name: 'Maple Street neighbours' }) })
+    expect(mocks.q).toHaveBeenCalledWith('find_group_by_location', {
+      street_name: 'maple street',
+      suburb: 'CARLTON',
+      postcode: '3053',
+    })
   })
 })
 

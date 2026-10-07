@@ -242,9 +242,9 @@
     },
     {
       "name": "list_groups",
-      "description": "List street groups filtered by status/suburb/postcode/assigned mower",
+      "description": "List street groups filtered by status, normalized (trimmed, case-insensitive) suburb/postcode, or assigned mower",
       "operation": "query",
-      "sql": "SELECT * FROM street_groups_compatible WHERE (:status IS NULL OR status = :status) AND (:suburb IS NULL OR suburb = :suburb) AND (:postcode IS NULL OR postcode = :postcode) AND (:mower_id IS NULL OR assigned_mower_id = :mower_id) ORDER BY updated_at DESC LIMIT :limit",
+      "sql": "SELECT * FROM street_groups_compatible WHERE (:status IS NULL OR status = :status) AND (:suburb IS NULL OR lower(trim(COALESCE(suburb, ''))) = lower(trim(:suburb))) AND (:postcode IS NULL OR lower(trim(COALESCE(postcode, ''))) = lower(trim(:postcode))) AND (:mower_id IS NULL OR assigned_mower_id = :mower_id) ORDER BY updated_at DESC LIMIT :limit",
       "params": {
         "status": {
           "type": "string",

@@ -64,12 +64,17 @@ export interface GroupSearch {
 export async function listGroups(filter: GroupSearch = {}): Promise<StreetGroup[]> {
   await ensureMigrated()
   // status/suburb/postcode/mowerId are filtered in the registered action.
+  // Location lookup has the same trimmed, case-insensitive semantics as the
+  // unique location index and duplicate-conflict lookup. Preserve display case
+  // here; the registered action performs the case-insensitive comparison.
+  const suburb = filter.suburb?.trim()
+  const postcode = filter.postcode?.trim()
   // adminId / memberId are filtered here post-query because admin_ids/member_ids
   // are JSON arrays; the cost of the extra client pass is negligible.
   const rows = await q<StreetGroupRow>('list_groups', {
     status: filter.status ?? null,
-    suburb: filter.suburb ?? null,
-    postcode: filter.postcode ?? null,
+    suburb: suburb || null,
+    postcode: postcode || null,
     mower_id: filter.mowerId ?? null,
     limit: filter.limit ?? 200,
   })

@@ -56,6 +56,13 @@ function call(name: string, userId: string, params: Record<string, unknown> = {}
   }
 }
 
+function query(name: string, userId: string, params: Record<string, unknown> = {}) {
+  const tool = action(name)
+  if (!tool.sql) throw new Error(`Query ${name} has no SQL`)
+  const { text, args } = bind(tool.sql, params, userId)
+  return db.prepare(text).all(...args)
+}
+
 function user(id: string, role: 'client' | 'mower' | 'admin' = 'client', groupId: string | null = null) {
   db.prepare('INSERT INTO users (id, role, street_group_id, created_at, updated_at) VALUES (?, ?, ?, 1, 1)').run(id, role, groupId)
 }
@@ -189,6 +196,20 @@ describe('street-group membership actions', () => {
     expect(db.prepare('SELECT id FROM street_groups ORDER BY id').all()).toEqual([{ id: 'first-group' }])
     expect(pointer('first')).toBe('first-group')
     expect(pointer('second')).toBeNull()
+  })
+
+  it('finds a group with case, whitespace, and postcode variants of its location', () => {
+    user('creator')
+    call('create_group', 'creator', {
+      id: 'maple-group',
+      name: 'Maple Street',
+      street_name: ' Maple Street ',
+      suburb: 'North Melbourne',
+      postcode: '3000',
+    })
+
+    expect(query('list_groups', 'searcher', { suburb: '  north MELBOURNE  ', postcode: ' 3000 ', limit: 200 }))
+      .toMatchObject([{ id: 'maple-group', street_name: 'Maple Street', suburb: 'North Melbourne', postcode: '3000' }])
   })
 
   it('allows distinct suburb, postcode, or street location tuples', () => {

@@ -5,6 +5,47 @@ import { GroupLocationConflictError, listGroups, createGroup, addMember, createG
 import { updateUser } from '../../lib/users'
 import type { StreetGroup } from '../../models'
 
+type ExistingGroupListProps = {
+  groups: StreetGroup[]
+  busy: boolean
+  requestedIds: string[]
+  onJoin: (group: StreetGroup) => void
+}
+
+/** Includes the duplicate-create winner so the user can request to join it. */
+export function groupsIncludingCanonicalConflict(groups: StreetGroup[], canonicalGroup: StreetGroup): StreetGroup[] {
+  return [canonicalGroup, ...groups.filter((group) => group.id !== canonicalGroup.id)]
+}
+
+export function ExistingGroupList({ groups, busy, requestedIds, onJoin }: ExistingGroupListProps) {
+  return (
+    <div className="space-y-3">
+      <h2 className="display-font text-lg font-semibold">Existing groups in your area</h2>
+      {groups.map((g) => (
+        <div
+          key={g.id}
+          className="flex items-center justify-between rounded-md border border-[var(--line)] bg-[var(--glass)] p-4"
+        >
+          <div>
+            <p className="font-medium">{g.name}</p>
+            <p className="text-xs text-[var(--muted)]">
+              {g.streetName ?? '—'} · {g.memberIds.length} member
+              {g.memberIds.length === 1 ? '' : 's'}
+            </p>
+          </div>
+          <button
+            onClick={() => onJoin(g)}
+            disabled={busy || requestedIds.includes(g.id)}
+            className="rounded-md border border-[var(--accent)] px-3 py-1.5 text-sm text-[var(--accent)] hover:bg-[var(--accent-soft)] disabled:opacity-50"
+          >
+            {requestedIds.includes(g.id) ? 'Requested' : 'Request to join'}
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // Simplified port — drops the AU state/city dropdown and the multi-step
 // "fetch existing → maybe create" gating in favour of a single suburb +
 // postcode lookup. Same end behaviour: if a group exists on the same street,
@@ -91,7 +132,16 @@ export default function StreetGroupSetupPage() {
       navigate('/app', { replace: true })
     } catch (err) {
       console.error(err)
-      setError(err instanceof GroupLocationConflictError ? err.message : 'Failed to create group.')
+      if (err instanceof GroupLocationConflictError) {
+        // A group may have appeared after the location search. Keep its
+        // canonical row in the results so this is a join flow, never a
+        // dead-end duplicate error.
+        setExisting((current) => groupsIncludingCanonicalConflict(current, err.existingGroup))
+        setSearched(true)
+        setError('A group already exists at that location. You can request to join it below.')
+      } else {
+        setError('Failed to create group.')
+      }
     } finally {
       setBusy(false)
     }
@@ -141,30 +191,12 @@ export default function StreetGroupSetupPage() {
       {searched && (
         <div className="space-y-4">
           {existing.length > 0 ? (
-            <div className="space-y-3">
-              <h2 className="display-font text-lg font-semibold">Existing groups in your area</h2>
-              {existing.map((g) => (
-                <div
-                  key={g.id}
-                  className="flex items-center justify-between rounded-md border border-[var(--line)] bg-[var(--glass)] p-4"
-                >
-                  <div>
-                    <p className="font-medium">{g.name}</p>
-                    <p className="text-xs text-[var(--muted)]">
-                      {g.streetName ?? '—'} · {g.memberIds.length} member
-                      {g.memberIds.length === 1 ? '' : 's'}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => void handleJoin(g)}
-                    disabled={busy || requestedIds.includes(g.id)}
-                    className="rounded-md border border-[var(--accent)] px-3 py-1.5 text-sm text-[var(--accent)] hover:bg-[var(--accent-soft)] disabled:opacity-50"
-                  >
-                    {requestedIds.includes(g.id) ? 'Requested' : 'Request to join'}
-                  </button>
-                </div>
-              ))}
-            </div>
+            <ExistingGroupList
+              groups={existing}
+              busy={busy}
+              requestedIds={requestedIds}
+              onJoin={(group) => void handleJoin(group)}
+            />
           ) : (
             <p className="text-sm text-[var(--muted)]">No existing groups found. You can start one below.</p>
           )}
