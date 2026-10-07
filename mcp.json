@@ -215,10 +215,10 @@
     },
     {
       "name": "create_group",
-      "description": "Atomically create a street group with the caller as its sole admin and member, and set the caller's group pointer",
+      "description": "Atomically create a street group with the caller as its sole admin and member, and set the caller's group pointer. The normalized (trimmed, case-insensitive) suburb + postcode + street tuple is unique; an existing tuple is safely ignored for the caller to resolve as a conflict.",
       "operation": "batch",
       "statements": [
-        "INSERT INTO street_groups (id, name, street_name, suburb, postcode, state, country, center_lat, center_lng, admin_ids, member_ids, assigned_mower_id, status, created_at, updated_at) SELECT :id, :name, :street_name, :suburb, :postcode, :state, :country, :center_lat, :center_lng, json_array(:__user_id), json_array(:__user_id), NULL, 'forming', :__now, :__now FROM users u WHERE u.id = :__user_id AND u.role = 'client' AND u.street_group_id IS NULL",
+        "INSERT OR IGNORE INTO street_groups (id, name, street_name, suburb, postcode, state, country, center_lat, center_lng, admin_ids, member_ids, assigned_mower_id, status, created_at, updated_at) SELECT :id, :name, trim(:street_name), trim(:suburb), trim(:postcode), :state, :country, :center_lat, :center_lng, json_array(:__user_id), json_array(:__user_id), NULL, 'forming', :__now, :__now FROM users u WHERE u.id = :__user_id AND u.role = 'client' AND u.street_group_id IS NULL AND length(trim(:street_name)) > 0 AND length(trim(:suburb)) > 0 AND trim(:postcode) GLOB '[0-9][0-9][0-9][0-9]'",
         "UPDATE users SET street_group_id = :id, updated_at = :__now WHERE id = :__user_id AND role = 'client' AND street_group_id IS NULL AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :id AND EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) AND EXISTS (SELECT 1 FROM json_each(g.member_ids) WHERE value = :__user_id))"
       ],
       "params": {
@@ -258,6 +258,23 @@
         }
       },
       "requires_auth": true
+    },
+    {
+      "name": "find_group_by_location",
+      "description": "Find a street group by its normalized (trimmed, case-insensitive) suburb + postcode + street tuple, used to present duplicate-create conflicts safely.",
+      "operation": "query",
+      "sql": "SELECT * FROM street_groups WHERE lower(trim(COALESCE(suburb, ''))) = lower(trim(:suburb)) AND lower(trim(COALESCE(postcode, ''))) = lower(trim(:postcode)) AND lower(trim(COALESCE(street_name, ''))) = lower(trim(:street_name)) LIMIT 1",
+      "params": {
+        "street_name": { "type": "string" },
+        "suburb": { "type": "string" },
+        "postcode": { "type": "string" }
+      },
+      "requires_auth": true,
+      "auth": {
+        "caller_unscoped": {
+          "reason": "Street group locations are already visible in the authenticated street-group directory; this exact lookup prevents duplicate creation and lets a caller request to join the existing group."
+        }
+      }
     },
     {
       "name": "update_group",

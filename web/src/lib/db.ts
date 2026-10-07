@@ -121,6 +121,20 @@ export const MIGRATIONS = [
       );
     `,
   },
+  {
+    name: '0002_street_group_location_unique',
+    // A street group is unique by suburb, postcode, and street name after
+    // SQLite's lower(trim(...)) normalization. Keep this in sync with the
+    // deployment migration in migrations.json and location validation below.
+    sql: `
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_street_groups_location_normalized
+        ON street_groups (
+          lower(trim(COALESCE(suburb, ''))),
+          lower(trim(COALESCE(postcode, ''))),
+          lower(trim(COALESCE(street_name, '')))
+        );
+    `,
+  },
 ]
 
 let migrated = false

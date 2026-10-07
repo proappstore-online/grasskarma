@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { listGroups, createGroup, addMember, createGroupInterest } from '../../lib/streetGroups'
+import { GroupLocationConflictError, listGroups, createGroup, addMember, createGroupInterest } from '../../lib/streetGroups'
 import { updateUser } from '../../lib/users'
 import type { StreetGroup } from '../../models'
 
@@ -91,7 +91,7 @@ export default function StreetGroupSetupPage() {
       navigate('/app', { replace: true })
     } catch (err) {
       console.error(err)
-      setError('Failed to create group.')
+      setError(err instanceof GroupLocationConflictError ? err.message : 'Failed to create group.')
     } finally {
       setBusy(false)
     }

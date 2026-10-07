@@ -78,9 +78,9 @@ export async function getGroup(id: string): Promise<StreetGroup | null> {
 
 export interface GroupCreate {
   name: string
-  streetName?: string | null
-  suburb?: string | null
-  postcode?: string | null
+  streetName: string
+  suburb: string
+  postcode: string
   state?: string | null
   country?: string | null
   centerLat?: number | null
@@ -88,25 +88,74 @@ export interface GroupCreate {
   createdBy: string
 }
 
+export interface GroupLocation {
+  streetName: string
+  suburb: string
+  postcode: string
+}
+
+/** Raised when D1's normalized location uniqueness invariant finds a group. */
+export class GroupLocationConflictError extends Error {
+  readonly existingGroup: StreetGroup
+
+  constructor(existingGroup: StreetGroup) {
+    super(`A street group already exists for ${existingGroup.streetName}, ${existingGroup.suburb} ${existingGroup.postcode}. Please request to join it.`)
+    this.name = 'GroupLocationConflictError'
+    this.existingGroup = existingGroup
+  }
+}
+
+/**
+ * Model-level counterpart to the D1 location index: required, trimmed fields.
+ * Case is deliberately left intact for display; D1 compares with lower(trim()).
+ */
+export function normalizeGroupLocation(input: Pick<GroupCreate, 'streetName' | 'suburb' | 'postcode'>): GroupLocation {
+  const streetName = input.streetName.trim()
+  const suburb = input.suburb.trim()
+  const postcode = input.postcode.trim()
+  if (!streetName) throw new Error('Street name is required to create a group.')
+  if (!suburb || !/^\d{4}$/.test(postcode)) throw new Error('Suburb and 4-digit postcode are required to create a group.')
+  return { streetName, suburb, postcode }
+}
+
+async function findGroupByLocation(location: GroupLocation): Promise<StreetGroup | null> {
+  const rows = await q<StreetGroupRow>('find_group_by_location', {
+    street_name: location.streetName,
+    suburb: location.suburb,
+    postcode: location.postcode,
+  })
+  return rows[0] ? rowToGroup(rows[0]) : null
+}
+
 export async function createGroup(input: GroupCreate): Promise<StreetGroup> {
   await ensureMigrated()
+  const location = normalizeGroupLocation(input)
+  const existing = await findGroupByLocation(location)
+  if (existing) throw new GroupLocationConflictError(existing)
+
   const id = crypto.randomUUID()
   // The caller (`:__user_id`) is always the sole initial admin + member —
   // `input.createdBy` is the caller's own id at every call site.
   await x('create_group', {
     id,
     name: input.name,
-    street_name: input.streetName ?? null,
-    suburb: input.suburb ?? null,
-    postcode: input.postcode ?? null,
+    street_name: location.streetName,
+    suburb: location.suburb,
+    postcode: location.postcode,
     state: input.state ?? null,
     country: input.country ?? null,
     center_lat: input.centerLat ?? null,
     center_lng: input.centerLng ?? null,
   })
   const g = await getGroup(id)
-  if (!g) throw new Error('Group not found after create')
-  return g
+  if (g) return g
+
+  // INSERT OR IGNORE turns a concurrent unique-index collision into a no-op.
+  // Re-read the canonical row so the caller receives a conflict, never a raw
+  // constraint exception or a misleading success response.
+  const winner = await findGroupByLocation(location)
+  if (winner) throw new GroupLocationConflictError(winner)
+  throw new Error('Group was not created. Please try again.')
 }
 
 export interface GroupPatch {

@@ -87,7 +87,13 @@ describe('street-group membership actions', () => {
   it('creates the group and the creator pointer together', () => {
     user('creator')
 
-    call('create_group', 'creator', { id: 'created', name: 'Created St' })
+    call('create_group', 'creator', {
+      id: 'created',
+      name: 'Created St',
+      street_name: 'Created St',
+      suburb: 'North Melbourne',
+      postcode: '3000',
+    })
 
     expect(members('created')).toEqual(['creator'])
     expect(pointer('creator')).toBe('created')
@@ -152,5 +158,55 @@ describe('street-group membership actions', () => {
     expect(pointer('admin')).toBeNull()
     expect(pointer('client')).toBeNull()
     expect(pointer('stale')).toBeNull()
+  })
+
+  it('rejects a duplicate normalized street location without creating a second group', () => {
+    user('first')
+    user('second')
+    const firstLocation = { street_name: '  Maple Street  ', suburb: 'North Melbourne', postcode: '3000' }
+    const duplicateLocation = { street_name: 'maple street', suburb: ' north melbourne ', postcode: '3000' }
+
+    call('create_group', 'first', { id: 'first-group', name: 'Maple Street', ...firstLocation })
+    // INSERT OR IGNORE is deliberately a no-op here: the model resolves this
+    // into a friendly GroupLocationConflictError after looking up first-group.
+    expect(() => call('create_group', 'second', { id: 'second-group', name: 'Maple Street', ...duplicateLocation })).not.toThrow()
+
+    expect(db.prepare('SELECT id FROM street_groups ORDER BY id').all()).toEqual([{ id: 'first-group' }])
+    expect(pointer('first')).toBe('first-group')
+    expect(pointer('second')).toBeNull()
+  })
+
+  it('allows distinct suburb, postcode, or street location tuples', () => {
+    user('first')
+    user('second')
+    user('third')
+    user('fourth')
+
+    call('create_group', 'first', { id: 'one', name: 'Maple Street', street_name: 'Maple Street', suburb: 'North Melbourne', postcode: '3000' })
+    call('create_group', 'second', { id: 'two', name: 'Maple Street', street_name: 'Maple Street', suburb: 'West Melbourne', postcode: '3000' })
+    call('create_group', 'third', { id: 'three', name: 'Maple Street', street_name: 'Maple Street', suburb: 'North Melbourne', postcode: '3001' })
+    call('create_group', 'fourth', { id: 'four', name: 'Oak Street', street_name: 'Oak Street', suburb: 'North Melbourne', postcode: '3000' })
+
+    expect(db.prepare('SELECT id FROM street_groups ORDER BY id').all()).toEqual([
+      { id: 'four' },
+      { id: 'one' },
+      { id: 'three' },
+      { id: 'two' },
+    ])
+  })
+
+  it('handles a concurrent duplicate-create loser without a database exception or partial membership', () => {
+    user('first')
+    user('second')
+    const location = { street_name: 'Maple Street', suburb: 'North Melbourne', postcode: '3000' }
+
+    // These back-to-back transaction attempts model two requests that both
+    // passed the model preflight before either INSERT reached D1.
+    call('create_group', 'first', { id: 'winner', name: 'Maple Street', ...location })
+    expect(() => call('create_group', 'second', { id: 'loser', name: 'Maple Street', ...location })).not.toThrow()
+
+    expect(db.prepare('SELECT id FROM street_groups').all()).toEqual([{ id: 'winner' }])
+    expect(pointer('first')).toBe('winner')
+    expect(pointer('second')).toBeNull()
   })
 })
