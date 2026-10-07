@@ -1,7 +1,7 @@
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import { app } from '../lib/app'
-import { AuthProvider, useAuth } from './AuthContext'
+import { AuthProvider, resolveAuthGate, shouldCommitProfileLoad, useAuth } from './AuthContext'
 
 // #1: useProGate's signIn ignores the provider, so the context must forward it
 // to the SDK itself or Google silently becomes GitHub.
@@ -23,5 +23,25 @@ describe('AuthContext signIn', () => {
 
     expect(spy).toHaveBeenCalledWith(provider)
     spy.mockRestore()
+  })
+})
+
+describe('AuthContext profile loading', () => {
+  it('ignores a profile response that arrives after sign-out', () => {
+    expect(shouldCommitProfileLoad({
+      requestGeneration: 4,
+      activeGeneration: 5,
+      requestedUserId: 'user-1',
+      activeUserId: null,
+    })).toBe(false)
+  })
+
+  it('keeps a failed profile load out of onboarding', () => {
+    expect(resolveAuthGate({
+      platformGate: 'ready',
+      loadingUser: false,
+      user: null,
+      profileLoadError: new Error('profile request failed'),
+    })).toBe('profile-error')
   })
 })

@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { RolePicker } from './RolePicker'
 
 export function AuthGate({ children }: { children: ReactNode }) {
-  const { gate, signIn } = useAuth()
+  const { gate, signIn, profileLoadError, retryProfileLoad } = useAuth()
 
   if (gate === 'loading') {
     return (
@@ -38,6 +38,24 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (gate === 'no-role') {
     return <RolePicker />
+  }
+
+  if (gate === 'profile-error') {
+    return (
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 px-4 text-center">
+        <h1 className="display-font text-3xl font-bold text-[var(--ink)]">We couldn&apos;t load your profile</h1>
+        <p className="max-w-md text-[var(--muted)]">
+          Your account is still signed in. Please try again before continuing.
+        </p>
+        {profileLoadError && <p className="max-w-md text-sm text-[var(--error)]">{profileLoadError.message}</p>}
+        <button
+          onClick={() => void retryProfileLoad()}
+          className="rounded-2xl bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-white hover:opacity-90"
+        >
+          Try again
+        </button>
+      </div>
+    )
   }
 
   return <>{children}</>

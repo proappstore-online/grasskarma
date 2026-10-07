@@ -43,7 +43,7 @@ Pages and admin operations always go through these — never call `app.db.*` dir
 
 ## Auth + role gate
 
-`web/src/contexts/AuthContext.tsx` wraps `useProGate` (`@proappstore/sdk/hooks`) and loads the user's `users` row from D1. State machine: `loading → signed-out → no-role → ready`. First-time `no-role` lands on `RolePicker` which writes the row with role `client` or `mower`. `admin` is promoted by an existing admin, not picked.
+`web/src/contexts/AuthContext.tsx` wraps `useProGate` (`@proappstore/sdk/hooks`) and loads the user's `users` row from D1. State machine: `loading → signed-out → profile-error | no-role | ready`. A profile lookup failure is recoverable via retry and must never be treated as `no-role`; requests are session-scoped so stale responses cannot restore a signed-out user. First-time `no-role` lands on `RolePicker` which writes the row with role `client` or `mower`. `admin` is promoted by an existing admin, not picked.
 
 `web/src/routes/PrivateRoute.tsx` reads `user.role` from the users row — no Firebase custom claims. It is a UX gate only. Real authorization is enforced by the registered, authenticated server actions in root `mcp.json`: every mutation binds the verified `:__user_id` and checks the required platform-admin, group-admin, role, membership, or record-ownership relationship in SQL. The data worker does not accept raw browser SQL. Keep new reads/writes in registered actions; do not reintroduce direct `app.db.*` calls in pages or libs. See `pas/grasskarma-port-plan.md` §0 for migration history.
 
