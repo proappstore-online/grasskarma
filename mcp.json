@@ -196,7 +196,7 @@
       "name": "list_groups",
       "description": "List street groups filtered by status/suburb/postcode/assigned mower",
       "operation": "query",
-      "sql": "SELECT * FROM street_groups WHERE (:status IS NULL OR status = :status) AND (:suburb IS NULL OR suburb = :suburb) AND (:postcode IS NULL OR postcode = :postcode) AND (:mower_id IS NULL OR assigned_mower_id = :mower_id) ORDER BY updated_at DESC LIMIT :limit",
+      "sql": "SELECT * FROM street_groups_compatible WHERE (:status IS NULL OR status = :status) AND (:suburb IS NULL OR suburb = :suburb) AND (:postcode IS NULL OR postcode = :postcode) AND (:mower_id IS NULL OR assigned_mower_id = :mower_id) ORDER BY updated_at DESC LIMIT :limit",
       "params": {
         "status": {
           "type": "string",
@@ -232,7 +232,7 @@
       "name": "get_group",
       "description": "Fetch one street group by id",
       "operation": "query",
-      "sql": "SELECT * FROM street_groups g WHERE g.id = :id AND ((EXISTS (SELECT 1 FROM json_each(g.member_ids) c WHERE c.value = :__user_id) OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) c WHERE c.value = :__user_id)) OR g.assigned_mower_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
+      "sql": "SELECT * FROM street_groups_compatible g WHERE g.id = :id AND ((EXISTS (SELECT 1 FROM json_each(g.member_ids) c WHERE c.value = :__user_id) OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) c WHERE c.value = :__user_id)) OR g.assigned_mower_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
       "params": {
         "id": {
           "type": "string"
@@ -290,7 +290,7 @@
       "name": "find_group_by_location",
       "description": "Find a street group by its normalized (trimmed, case-insensitive) suburb + postcode + street tuple, used to present duplicate-create conflicts safely.",
       "operation": "query",
-      "sql": "SELECT * FROM street_groups WHERE lower(trim(COALESCE(suburb, ''))) = lower(trim(:suburb)) AND lower(trim(COALESCE(postcode, ''))) = lower(trim(:postcode)) AND lower(trim(COALESCE(street_name, ''))) = lower(trim(:street_name)) LIMIT 1",
+      "sql": "SELECT * FROM street_groups_compatible WHERE lower(trim(COALESCE(suburb, ''))) = lower(trim(:suburb)) AND lower(trim(COALESCE(postcode, ''))) = lower(trim(:postcode)) AND lower(trim(COALESCE(street_name, ''))) = lower(trim(:street_name)) LIMIT 1",
       "params": {
         "street_name": { "type": "string" },
         "suburb": { "type": "string" },
@@ -307,7 +307,7 @@
       "name": "update_group",
       "description": "Update a street group's profile/status/assigned mower (group admins or platform admins only)",
       "operation": "execute",
-      "sql": "UPDATE street_groups SET name = CASE WHEN :set_name = 1 THEN :name ELSE name END, street_name = CASE WHEN :set_street_name = 1 THEN :street_name ELSE street_name END, suburb = CASE WHEN :set_suburb = 1 THEN :suburb ELSE suburb END, postcode = CASE WHEN :set_postcode = 1 THEN :postcode ELSE postcode END, state = CASE WHEN :set_state = 1 THEN :state ELSE state END, country = CASE WHEN :set_country = 1 THEN :country ELSE country END, center_lat = CASE WHEN :set_center_lat = 1 THEN :center_lat ELSE center_lat END, center_lng = CASE WHEN :set_center_lng = 1 THEN :center_lng ELSE center_lng END, status = CASE WHEN :set_status = 1 THEN :status ELSE status END, assigned_mower_id = CASE WHEN :set_assigned_mower_id = 1 THEN :assigned_mower_id ELSE assigned_mower_id END, updated_at = :__now WHERE id = :id AND (EXISTS (SELECT 1 FROM json_each(street_groups.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) AND (:set_assigned_mower_id = 0 OR :assigned_mower_id IS NULL OR (EXISTS (SELECT 1 FROM users m WHERE m.id = :assigned_mower_id AND m.role = 'mower') AND EXISTS (SELECT 1 FROM mower_interests mi WHERE mi.group_id = street_groups.id AND mi.mower_id = :assigned_mower_id)))",
+      "sql": "UPDATE street_groups SET name = CASE WHEN :set_name = 1 THEN :name ELSE name END, street_name = CASE WHEN :set_street_name = 1 THEN :street_name ELSE street_name END, suburb = CASE WHEN :set_suburb = 1 THEN :suburb ELSE suburb END, postcode = CASE WHEN :set_postcode = 1 THEN :postcode ELSE postcode END, state = CASE WHEN :set_state = 1 THEN :state ELSE state END, country = CASE WHEN :set_country = 1 THEN :country ELSE country END, center_lat = CASE WHEN :set_center_lat = 1 THEN :center_lat ELSE center_lat END, center_lng = CASE WHEN :set_center_lng = 1 THEN :center_lng ELSE center_lng END, status = CASE WHEN :set_status = 1 THEN :status ELSE status END, assigned_mower_id = CASE WHEN :set_assigned_mower_id = 1 THEN :assigned_mower_id ELSE assigned_mower_id END, updated_at = :__now WHERE id = :id AND (EXISTS (SELECT 1 FROM json_each(street_groups.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) AND (COALESCE(:set_status, 0) = 0 OR :status IN ('forming', 'active', 'paused', 'archived')) AND (:set_assigned_mower_id = 0 OR :assigned_mower_id IS NULL OR (EXISTS (SELECT 1 FROM users m WHERE m.id = :assigned_mower_id AND m.role = 'mower') AND EXISTS (SELECT 1 FROM mower_interests mi WHERE mi.group_id = street_groups.id AND mi.mower_id = :assigned_mower_id)))",
       "params": {
         "id": { "type": "string" },
         "set_name": { "type": "integer", "default": 0, "optional": true },
@@ -481,7 +481,7 @@
       "name": "list_schedules",
       "description": "List a group's schedules ordered by due date then day of week",
       "operation": "query",
-      "sql": "SELECT * FROM schedules WHERE group_id = :group_id AND (schedules.mower_id = :__user_id OR EXISTS (SELECT 1 FROM street_groups g WHERE g.id = schedules.group_id AND ((EXISTS (SELECT 1 FROM json_each(g.member_ids) c WHERE c.value = :__user_id) OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) c WHERE c.value = :__user_id)) OR g.assigned_mower_id = :__user_id)) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) ORDER BY due_date ASC NULLS LAST, day_of_week ASC NULLS LAST",
+      "sql": "SELECT * FROM schedules_compatible s WHERE s.group_id = :group_id AND (s.mower_id = :__user_id OR EXISTS (SELECT 1 FROM street_groups g WHERE g.id = s.group_id AND ((EXISTS (SELECT 1 FROM json_each(g.member_ids) c WHERE c.value = :__user_id) OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) c WHERE c.value = :__user_id)) OR g.assigned_mower_id = :__user_id)) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) ORDER BY due_date ASC NULLS LAST, day_of_week ASC NULLS LAST",
       "params": {
         "group_id": {
           "type": "string"
@@ -493,7 +493,7 @@
       "name": "list_schedules_for_mower",
       "description": "List the calling mower's own schedules",
       "operation": "query",
-      "sql": "SELECT * FROM schedules WHERE mower_id = :__user_id ORDER BY due_date DESC LIMIT :limit",
+      "sql": "SELECT * FROM schedules_compatible WHERE mower_id = :__user_id ORDER BY due_date DESC LIMIT :limit",
       "params": {
         "limit": {
           "type": "integer",
@@ -508,7 +508,7 @@
       "name": "create_schedule",
       "description": "Create a schedule for a group (group admins or platform admins only). day_of_week is 0 (Sunday) through 6 (Saturday); start_time is 24-hour HH:MM.",
       "operation": "execute",
-      "sql": "INSERT INTO schedules (id, group_id, day_of_week, start_time, mower_id, status, due_date, completed_at, created_at, updated_at) SELECT :id, :group_id, :day_of_week, :start_time, :mower_id, 'planned', :due_date, NULL, :__now, :__now WHERE EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))) AND (:mower_id IS NULL OR EXISTS (SELECT 1 FROM users m WHERE m.id = :mower_id AND m.role = 'mower'))",
+      "sql": "INSERT INTO schedules (id, group_id, day_of_week, start_time, mower_id, status, due_date, completed_at, created_at, updated_at) SELECT :id, :group_id, :day_of_week, :start_time, :mower_id, 'planned', :due_date, NULL, :__now, :__now WHERE EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))) AND (:day_of_week IS NULL OR (:day_of_week BETWEEN 0 AND 6 AND :day_of_week = CAST(:day_of_week AS INTEGER))) AND (:start_time IS NULL OR (typeof(:start_time) = 'text' AND (:start_time GLOB '[01][0-9]:[0-5][0-9]' OR :start_time GLOB '2[0-3]:[0-5][0-9]'))) AND (:mower_id IS NULL OR EXISTS (SELECT 1 FROM users m WHERE m.id = :mower_id AND m.role = 'mower'))",
       "params": {
         "id": {
           "type": "string"
@@ -539,7 +539,7 @@
       "name": "update_schedule",
       "description": "Update a schedule (group admins/platform admins, or the assigned mower updating status/completion). day_of_week is 0 (Sunday) through 6 (Saturday); start_time is 24-hour HH:MM.",
       "operation": "execute",
-      "sql": "UPDATE schedules SET day_of_week = CASE WHEN :set_day_of_week = 1 THEN :day_of_week ELSE day_of_week END, start_time = CASE WHEN :set_start_time = 1 THEN :start_time ELSE start_time END, mower_id = CASE WHEN :set_mower_id = 1 THEN :mower_id ELSE mower_id END, status = CASE WHEN :set_status = 1 THEN :status ELSE status END, due_date = CASE WHEN :set_due_date = 1 THEN :due_date ELSE due_date END, completed_at = CASE WHEN :set_completed_at = 1 THEN :completed_at ELSE completed_at END, updated_at = :__now WHERE id = :id AND (:set_mower_id = 0 OR :mower_id IS NULL OR EXISTS (SELECT 1 FROM users m WHERE m.id = :mower_id AND m.role = 'mower')) AND (EXISTS (SELECT 1 FROM street_groups g WHERE g.id = schedules.group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))) OR (schedules.mower_id = :__user_id AND :set_day_of_week = 0 AND :set_start_time = 0 AND :set_mower_id = 0 AND :set_due_date = 0 AND :set_status = 1 AND :status = 'done' AND :set_completed_at = 1))",
+      "sql": "UPDATE schedules SET day_of_week = CASE WHEN :set_day_of_week = 1 THEN :day_of_week ELSE day_of_week END, start_time = CASE WHEN :set_start_time = 1 THEN :start_time ELSE start_time END, mower_id = CASE WHEN :set_mower_id = 1 THEN :mower_id ELSE mower_id END, status = CASE WHEN :set_status = 1 THEN :status ELSE status END, due_date = CASE WHEN :set_due_date = 1 THEN :due_date ELSE due_date END, completed_at = CASE WHEN :set_completed_at = 1 THEN :completed_at ELSE completed_at END, updated_at = :__now WHERE id = :id AND (COALESCE(:set_day_of_week, 0) = 0 OR :day_of_week IS NULL OR (:day_of_week BETWEEN 0 AND 6 AND :day_of_week = CAST(:day_of_week AS INTEGER))) AND (COALESCE(:set_start_time, 0) = 0 OR :start_time IS NULL OR (typeof(:start_time) = 'text' AND (:start_time GLOB '[01][0-9]:[0-5][0-9]' OR :start_time GLOB '2[0-3]:[0-5][0-9]'))) AND (COALESCE(:set_status, 0) = 0 OR :status IN ('planned', 'done', 'skipped')) AND (COALESCE(:set_mower_id, 0) = 0 OR :mower_id IS NULL OR EXISTS (SELECT 1 FROM users m WHERE m.id = :mower_id AND m.role = 'mower')) AND (EXISTS (SELECT 1 FROM street_groups g WHERE g.id = schedules.group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))) OR (schedules.mower_id = :__user_id AND :set_day_of_week = 0 AND :set_start_time = 0 AND :set_mower_id = 0 AND :set_due_date = 0 AND :set_status = 1 AND :status = 'done' AND :set_completed_at = 1))",
       "params": {
         "id": { "type": "string" },
         "set_day_of_week": { "type": "integer", "default": 0, "optional": true },
