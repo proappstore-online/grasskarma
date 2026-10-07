@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listGroups, updateGroup, deleteGroup } from '../../lib/streetGroups'
-import type { StreetGroup, StreetGroupStatus } from '../../models'
+import { STREET_GROUP_STATUSES, type StreetGroup, type StreetGroupStatus } from '../../models'
 
 export default function AdminGroupsPage() {
   const [groups, setGroups] = useState<StreetGroup[]>([])
@@ -70,7 +70,7 @@ export default function AdminGroupsPage() {
       </header>
 
       <div className="flex flex-wrap gap-2">
-        {(['all', 'forming', 'active', 'paused', 'archived'] as const).map((f) => (
+        {(['all', ...STREET_GROUP_STATUSES] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -114,10 +114,7 @@ export default function AdminGroupsPage() {
                     disabled={busyId === g.id}
                     className="rounded-md border border-[var(--line)] bg-[var(--paper)] px-2 py-1 text-xs"
                   >
-                    <option value="forming">forming</option>
-                    <option value="active">active</option>
-                    <option value="paused">paused</option>
-                    <option value="archived">archived</option>
+                    {STREET_GROUP_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
                   </select>
                 </td>
                 <td className="px-4 py-3 text-right">

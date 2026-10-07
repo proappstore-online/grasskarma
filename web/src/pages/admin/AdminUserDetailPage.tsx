@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getUser, adminSetRole, adminDeleteUser } from '../../lib/users'
 import { averageRating } from '../../lib/reviews'
 import { listHistory } from '../../lib/history'
-import type { User, Role, HistoryRecord } from '../../models'
+import { ROLES, type User, type Role, type HistoryRecord } from '../../models'
 
 export default function AdminUserDetailPage() {
   const { userId } = useParams<{ userId: string }>()
@@ -99,7 +99,7 @@ export default function AdminUserDetailPage() {
       <div className="space-y-3 rounded-lg border border-[var(--line)] bg-[var(--glass)] p-5">
         <h2 className="display-font text-lg font-semibold">Role</h2>
         <div className="flex gap-2">
-          {(['client', 'mower', 'admin'] as Role[]).map((r) => (
+          {ROLES.map((r) => (
             <button
               key={r}
               onClick={() => void handleRole(r)}

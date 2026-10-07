@@ -1,9 +1,10 @@
 import { ensureMigrated } from './db'
 import { q, xOne, xBatch } from './actions'
 import type { ScheduleRow } from './db'
-import type { Schedule, ScheduleStatus } from '../models'
+import { SCHEDULE_STATUSES, type Schedule, type ScheduleStatus } from '../models'
+import type { ActionParams } from './actions'
 
-const SCHEDULE_STATUSES = new Set<ScheduleStatus>(['planned', 'done', 'skipped'])
+const scheduleStatusSet = new Set<ScheduleStatus>(SCHEDULE_STATUSES)
 const SCHEDULE_TIME = /^(?:[01]\d|2[0-3]):[0-5]\d$/
 
 /**
@@ -21,7 +22,7 @@ export function validateScheduleRange(input: Pick<ScheduleCreate, 'dayOfWeek' | 
 }
 
 export function validateScheduleStatus(status: ScheduleStatus): void {
-  if (!SCHEDULE_STATUSES.has(status)) throw new Error('Schedule status must be planned, done, or skipped.')
+  if (!scheduleStatusSet.has(status)) throw new Error(`Schedule status must be ${SCHEDULE_STATUSES.join(', ')}.`)
 }
 
 function rowToSchedule(r: ScheduleRow): Schedule {
@@ -41,14 +42,14 @@ function rowToSchedule(r: ScheduleRow): Schedule {
 
 export async function listSchedules(groupId: string): Promise<Schedule[]> {
   await ensureMigrated()
-  const rows = await q<ScheduleRow>('list_schedules', { group_id: groupId })
+  const rows = await q<ScheduleRow, 'list_schedules'>('list_schedules', { group_id: groupId })
   return rows.map(rowToSchedule)
 }
 
 // Always the verified caller's (`:__user_id`) own schedules.
 export async function listSchedulesForMower(limit = 100): Promise<Schedule[]> {
   await ensureMigrated()
-  const rows = await q<ScheduleRow>('list_schedules_for_mower', { limit })
+  const rows = await q<ScheduleRow, 'list_schedules_for_mower'>('list_schedules_for_mower', { limit })
   return rows.map(rowToSchedule)
 }
 
@@ -103,7 +104,7 @@ export async function updateSchedule(id: string, patch: SchedulePatch): Promise<
     startTime: patch.startTime,
   })
   if ('status' in patch && patch.status != null) validateScheduleStatus(patch.status)
-  const params: Record<string, unknown> = { id }
+  const params: ActionParams<'update_schedule'> & Record<string, unknown> = { id }
   const set = (flag: string, col: string, val: unknown) => {
     params[flag] = 1
     params[col] = val

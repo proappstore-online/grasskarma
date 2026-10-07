@@ -86,7 +86,7 @@ export async function queuePhotoCleanup(keys: Array<string | null | undefined>):
  * delete is acknowledged atomically with removal from the object ledger. */
 export async function drainPendingPhotoCleanup(): Promise<void> {
   if (!app.auth.user) return
-  const jobs = await q<{ storage_key: string }>('list_photo_cleanup_jobs')
+  const jobs = await q<{ storage_key: string }, 'list_photo_cleanup_jobs'>('list_photo_cleanup_jobs')
   for (const { storage_key: key } of jobs) {
     try {
       await deletePhoto(key)

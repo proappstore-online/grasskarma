@@ -1,4 +1,6 @@
-export type StreetGroupStatus = 'forming' | 'active' | 'paused' | 'archived'
+/** The canonical lifecycle values for a street group. */
+export const STREET_GROUP_STATUSES = ['forming', 'active', 'paused', 'archived'] as const
+export type StreetGroupStatus = typeof STREET_GROUP_STATUSES[number]
 
 export interface StreetGroup {
   id: string

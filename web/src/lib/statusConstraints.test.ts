@@ -6,6 +6,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { validateScheduleRange, validateScheduleStatus } from './schedules'
 import { validateStreetGroupStatus } from './streetGroups'
+import { ROLES, SCHEDULE_STATUSES, STREET_GROUP_STATUSES } from '../models'
 
 type Param = { default?: string | number | null }
 type Tool = { name: string; sql?: string; params?: Record<string, Param> }
@@ -60,6 +61,14 @@ beforeEach(() => {
 })
 
 describe('group and schedule compatibility migration', () => {
+  it('keeps role and status vocabulary in the domain models', () => {
+    expect(ROLES).toEqual(['client', 'mower', 'admin'])
+    expect(STREET_GROUP_STATUSES).toEqual(['forming', 'active', 'paused', 'archived'])
+    expect(SCHEDULE_STATUSES).toEqual(['planned', 'done', 'skipped'])
+    for (const status of STREET_GROUP_STATUSES) expect(() => validateStreetGroupStatus(status)).not.toThrow()
+    for (const status of SCHEDULE_STATUSES) expect(() => validateScheduleStatus(status)).not.toThrow()
+  })
+
   it('clean-installs the complete additive ledger and creates the safe read views', () => {
     for (const item of migrations.migrations) expect(item.sql).not.toMatch(forbiddenMigrationKeyword)
     expect(db.prepare("SELECT name FROM sqlite_master WHERE type = 'view' ORDER BY name").all())

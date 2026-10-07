@@ -1,4 +1,5 @@
 import { app } from './app'
+import type { Role, ScheduleStatus, StreetGroupStatus } from '../models'
 
 export const MIGRATIONS = [
   {
@@ -217,10 +218,6 @@ export async function ensureMigrated(): Promise<void> {
 // ============================================================================
 // Row types — direct shape of D1 rows. Map to/from domain types in lib/*.ts.
 // ============================================================================
-
-export type Role = 'client' | 'mower' | 'admin'
-export type StreetGroupStatus = 'forming' | 'active' | 'paused' | 'archived'
-export type ScheduleStatus = 'planned' | 'done' | 'skipped'
 
 export interface UserRow {
   id: string

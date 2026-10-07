@@ -2,7 +2,12 @@
 // objects — Firestore Timestamp is gone, so we don't round-trip through Date
 // either).
 
-export type Role = 'client' | 'mower' | 'admin'
+/** The canonical set of roles understood by the GrassKarma domain. */
+export const ROLES = ['client', 'mower', 'admin'] as const
+export type Role = typeof ROLES[number]
+
+/** Roles a new authenticated user may select during onboarding. */
+export const SELF_SELECTABLE_ROLES = ROLES.filter((role): role is Exclude<Role, 'admin'> => role !== 'admin')
 
 export interface ClientProfile {
   street?: string

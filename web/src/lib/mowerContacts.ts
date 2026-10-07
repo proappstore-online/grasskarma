@@ -19,7 +19,7 @@ export function normalizePublicContactEmail(value: string | null | undefined): s
 /** Resolve a mower's deliberately published contact address for a hire enquiry. */
 export async function getPublicMowerContact(mowerId: string): Promise<string | null> {
   await ensureMigrated()
-  const rows = await q<PublicMowerContactRow>('get_public_mower_contact', { mower_id: mowerId })
+  const rows = await q<PublicMowerContactRow, 'get_public_mower_contact'>('get_public_mower_contact', { mower_id: mowerId })
   return rows[0]?.public_contact_email ?? null
 }
 

@@ -54,7 +54,7 @@ interface AuthState {
   signIn: (provider: SignInProvider) => Promise<void>
   signOut: () => Promise<void>
   // First-time onboarding — creates the users row with the chosen role.
-  chooseRole: (role: Role) => Promise<void>
+  chooseRole: (role: Exclude<Role, 'admin'>) => Promise<void>
   // Force refetch of the users row after a profile update.
   refresh: () => Promise<void>
   // Retry a failed initial profile lookup without sending the user to onboarding.
@@ -128,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [gateState.gate, gateState.user?.id, loadUser])
 
-  const chooseRole = async (role: Role) => {
+  const chooseRole = async (role: Exclude<Role, 'admin'>) => {
     if (!gateState.user) throw new Error('Not signed in')
     const fasUser = gateState.user
     const created = await createUser({

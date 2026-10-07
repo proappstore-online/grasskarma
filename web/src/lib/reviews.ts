@@ -1,6 +1,6 @@
 import { ensureMigrated } from './db'
 import { requireAuthenticatedCaller } from './caller'
-import { q, xOne } from './actions'
+import { q, xOne, type ActionParams } from './actions'
 import type { MowerReviewRow } from './db'
 import type { MowerReview } from '../models'
 
@@ -56,7 +56,7 @@ export async function createReview(input: ReviewCreate): Promise<MowerReview> {
 
 export async function listReviews(mowerId: string): Promise<MowerReview[]> {
   await ensureMigrated()
-  const rows = await q<MowerReviewRow>('list_reviews', { mower_id: mowerId })
+  const rows = await q<MowerReviewRow, 'list_reviews'>('list_reviews', { mower_id: mowerId })
   return rows.map(rowToReview)
 }
 
@@ -67,7 +67,7 @@ export interface ReviewPatch {
 
 export async function updateReview(id: string, patch: ReviewPatch): Promise<void> {
   await ensureMigrated()
-  const params: Record<string, unknown> = { id }
+  const params: ActionParams<'update_review'> = { id }
   if ('rating' in patch) {
     if (patch.rating! < 1 || patch.rating! > 5) throw new Error('rating must be 1..5')
     params.set_rating = 1
@@ -88,6 +88,6 @@ export async function deleteReview(id: string): Promise<void> {
 
 export async function averageRating(mowerId: string): Promise<{ average: number; count: number }> {
   await ensureMigrated()
-  const rows = await q<{ avg: number | null; n: number }>('average_rating', { mower_id: mowerId })
+  const rows = await q<{ avg: number | null; n: number }, 'average_rating'>('average_rating', { mower_id: mowerId })
   return { average: rows[0]?.avg ?? 0, count: rows[0]?.n ?? 0 }
 }

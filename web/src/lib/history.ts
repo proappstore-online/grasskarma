@@ -59,6 +59,6 @@ export async function recordHistory(input: HistoryCreate): Promise<HistoryRecord
 
 export async function listHistory(mowerId: string, limit = 200): Promise<HistoryRecord[]> {
   await ensureMigrated()
-  const rows = await q<HistoryRecordRow>('list_history', { mower_id: mowerId, limit })
+  const rows = await q<HistoryRecordRow, 'list_history'>('list_history', { mower_id: mowerId, limit })
   return rows.map(rowToRecord)
 }

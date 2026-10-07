@@ -26,14 +26,14 @@ function rowToVote(r: MowerInterestVoteRow): MowerInterestVote {
 
 export async function listInterestsForGroup(groupId: string): Promise<MowerInterest[]> {
   await ensureMigrated()
-  const rows = await q<MowerInterestRow>('list_interests_for_group', { group_id: groupId })
+  const rows = await q<MowerInterestRow, 'list_interests_for_group'>('list_interests_for_group', { group_id: groupId })
   return rows.map(rowToInterest)
 }
 
 // Always the verified caller's (`:__user_id`) own interests.
 export async function listInterestsForMower(): Promise<MowerInterest[]> {
   await ensureMigrated()
-  const rows = await q<MowerInterestRow>('list_interests_for_mower')
+  const rows = await q<MowerInterestRow, 'list_interests_for_mower'>('list_interests_for_mower')
   return rows.map(rowToInterest)
 }
 
@@ -60,13 +60,13 @@ export async function castVote(interestId: string, vote: -1 | 1): Promise<void> 
 
 export async function listVotes(interestId: string): Promise<MowerInterestVote[]> {
   await ensureMigrated()
-  const rows = await q<MowerInterestVoteRow>('list_votes', { interest_id: interestId })
+  const rows = await q<MowerInterestVoteRow, 'list_votes'>('list_votes', { interest_id: interestId })
   return rows.map(rowToVote)
 }
 
 export async function voteTally(interestId: string): Promise<{ up: number; down: number; score: number }> {
   await ensureMigrated()
-  const rows = await q<{ up: number; down: number }>('vote_tally', { interest_id: interestId })
+  const rows = await q<{ up: number; down: number }, 'vote_tally'>('vote_tally', { interest_id: interestId })
   const up = rows[0]?.up ?? 0
   const down = rows[0]?.down ?? 0
   return { up, down, score: up - down }

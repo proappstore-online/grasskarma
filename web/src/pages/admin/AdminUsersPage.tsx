@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listUsers, adminSetRole, adminDeleteUser } from '../../lib/users'
-import type { User, Role } from '../../models'
+import { ROLES, type User, type Role } from '../../models'
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([])
@@ -73,7 +73,7 @@ export default function AdminUsersPage() {
       </header>
 
       <div className="flex flex-wrap gap-2">
-        {(['all', 'client', 'mower', 'admin'] as const).map((f) => (
+        {(['all', ...ROLES] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -115,9 +115,7 @@ export default function AdminUsersPage() {
                     disabled={updatingId === u.id}
                     className="rounded-md border border-[var(--line)] bg-[var(--paper)] px-2 py-1 text-xs"
                   >
-                    <option value="client">client</option>
-                    <option value="mower">mower</option>
-                    <option value="admin">admin</option>
+                    {ROLES.map((role) => <option key={role} value={role}>{role}</option>)}
                   </select>
                 </td>
                 <td className="px-4 py-3 text-[var(--muted)]">

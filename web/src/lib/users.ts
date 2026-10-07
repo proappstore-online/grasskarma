@@ -1,7 +1,7 @@
 import { app } from './app'
 import { requireAuthenticatedCaller } from './caller'
 import { ensureMigrated } from './db'
-import { q, xOne, xBatch } from './actions'
+import { q, xOne, xBatch, type ActionParams } from './actions'
 import type { UserRow } from './db'
 import type { User, Role, ClientProfile, MowerProfile } from '../models'
 import { getPublicMowerContact } from './mowerContacts'
@@ -46,7 +46,7 @@ export async function getMe(): Promise<User | null> {
 
 export async function getUser(id: string): Promise<User | null> {
   await ensureMigrated()
-  const rows = await q<UserRow>('get_user', { id })
+  const rows = await q<UserRow, 'get_user'>('get_user', { id })
   if (!rows[0]) return null
   const user = rowToUser(rows[0])
   // This query exposes only the mower's explicit opt-in address; it never
@@ -64,7 +64,7 @@ export interface UserSearch {
 
 export async function listUsers(filter: UserSearch = {}): Promise<User[]> {
   await ensureMigrated()
-  const rows = await q<UserRow>('list_users', {
+  const rows = await q<UserRow, 'list_users'>('list_users', {
     role: filter.role ?? null,
     suburb: filter.suburb ?? null,
     postcode: filter.postcode ?? null,
@@ -78,7 +78,7 @@ export interface UserCreate {
   email?: string | null
   name?: string | null
   photoUrl?: string | null
-  role: Role
+  role: Exclude<Role, 'admin'>
   suburb?: string | null
   postcode?: string | null
   state?: string | null
@@ -121,7 +121,7 @@ export type UserPatch = Partial<Omit<UserCreate, 'role'>> & { streetGroupId?: st
 /** Update the verified caller's own user record. */
 export async function updateUser(patch: UserPatch): Promise<void> {
   await ensureMigrated()
-  const params: Record<string, unknown> = {}
+  const params: ActionParams<'update_me'> & Record<string, unknown> = {}
   const set = (flag: string, col: string, val: unknown) => {
     params[flag] = 1
     params[col] = val

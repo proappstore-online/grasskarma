@@ -2,14 +2,15 @@ import { ensureMigrated } from './db'
 import { requireAuthenticatedCaller } from './caller'
 import { ActionRefusedError, q, xOne, xBatch } from './actions'
 import type { StreetGroupRow, StreetGroupInterestRow } from './db'
-import type { StreetGroup, StreetGroupInterest, StreetGroupStatus } from '../models'
+import { STREET_GROUP_STATUSES, type StreetGroup, type StreetGroupInterest, type StreetGroupStatus } from '../models'
+import type { ActionParams } from './actions'
 
-const STREET_GROUP_STATUSES = new Set<StreetGroupStatus>(['forming', 'active', 'paused', 'archived'])
+const streetGroupStatusSet = new Set<StreetGroupStatus>(STREET_GROUP_STATUSES)
 
 /** D1 has the matching CHECK constraint; retain a readable model-boundary error. */
 export function validateStreetGroupStatus(status: StreetGroupStatus): void {
-  if (!STREET_GROUP_STATUSES.has(status)) {
-    throw new Error('Street-group status must be forming, active, paused, or archived.')
+  if (!streetGroupStatusSet.has(status)) {
+    throw new Error(`Street-group status must be ${STREET_GROUP_STATUSES.join(', ')}.`)
   }
 }
 
@@ -72,7 +73,7 @@ export async function listGroups(filter: GroupSearch = {}): Promise<StreetGroup[
   const postcode = filter.postcode?.trim()
   // adminId / memberId are filtered here post-query because admin_ids/member_ids
   // are JSON arrays; the cost of the extra client pass is negligible.
-  const rows = await q<StreetGroupRow>('list_groups', {
+  const rows = await q<StreetGroupRow, 'list_groups'>('list_groups', {
     status: filter.status ?? null,
     suburb: suburb || null,
     postcode: postcode || null,
@@ -87,7 +88,7 @@ export async function listGroups(filter: GroupSearch = {}): Promise<StreetGroup[
 
 export async function getGroup(id: string): Promise<StreetGroup | null> {
   await ensureMigrated()
-  const rows = await q<StreetGroupRow>('get_group', { id })
+  const rows = await q<StreetGroupRow, 'get_group'>('get_group', { id })
   return rows[0] ? rowToGroup(rows[0]) : null
 }
 
@@ -162,7 +163,7 @@ export function normalizeGroupLocation(input: Pick<GroupCreate, 'streetName' | '
 }
 
 async function findGroupByLocation(location: GroupLocation): Promise<StreetGroup | null> {
-  const rows = await q<StreetGroupRow>('find_group_by_location', {
+  const rows = await q<StreetGroupRow, 'find_group_by_location'>('find_group_by_location', {
     street_name: location.streetName,
     suburb: location.suburb,
     postcode: location.postcode,
@@ -243,7 +244,7 @@ export async function updateGroup(id: string, patch: GroupPatch): Promise<void> 
       postcode: normalizedLocationPatch.postcode ?? current.postcode,
     })
   }
-  const params: Record<string, unknown> = { id }
+  const params: ActionParams<'update_group'> & Record<string, unknown> = { id }
   const set = (flag: string, col: string, val: unknown) => {
     params[flag] = 1
     params[col] = val
@@ -304,7 +305,7 @@ export async function createGroupInterest(groupId: string, message: string | nul
 
 export async function listGroupInterests(groupId: string): Promise<StreetGroupInterest[]> {
   await ensureMigrated()
-  const rows = await q<StreetGroupInterestRow>('list_group_interests', { group_id: groupId })
+  const rows = await q<StreetGroupInterestRow, 'list_group_interests'>('list_group_interests', { group_id: groupId })
   return rows.map(rowToInterest)
 }
 
