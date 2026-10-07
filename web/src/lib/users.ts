@@ -104,7 +104,10 @@ export async function createUser(input: UserCreate): Promise<User> {
   return u
 }
 
-export type UserPatch = Partial<Omit<UserCreate, 'id'>> & { streetGroupId?: string | null }
+// Roles are deliberately absent: only the server-guarded adminSetRole action
+// may change one. A caller may point to a group only after the action verifies
+// their membership server-side.
+export type UserPatch = Partial<Omit<UserCreate, 'id' | 'role'>> & { streetGroupId?: string | null }
 
 // `id` is accepted for signature stability but the write always targets the
 // verified caller's own row (`:__user_id`) — every call site passes `user.id`.
@@ -118,7 +121,6 @@ export async function updateUser(_id: string, patch: UserPatch): Promise<void> {
   if ('email' in patch) set('set_email', 'email', patch.email ?? null)
   if ('name' in patch) set('set_name', 'name', patch.name ?? null)
   if ('photoUrl' in patch) set('set_photo_url', 'photo_url', patch.photoUrl ?? null)
-  if ('role' in patch) set('set_role', 'role', patch.role)
   if ('suburb' in patch) set('set_suburb', 'suburb', patch.suburb ?? null)
   if ('postcode' in patch) set('set_postcode', 'postcode', patch.postcode ?? null)
   if ('state' in patch) set('set_state', 'state', patch.state ?? null)

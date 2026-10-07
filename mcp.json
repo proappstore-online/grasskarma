@@ -51,9 +51,9 @@
     },
     {
       "name": "create_me",
-      "description": "Create the caller's own user row with a chosen role (first-time onboarding; id is the verified caller)",
+      "description": "Create the caller's own client or mower row (first-time onboarding; the verified caller cannot self-assign admin)",
       "operation": "execute",
-      "sql": "INSERT INTO users (id, email, name, photo_url, role, suburb, postcode, state, country, lat, lng, client_profile, mower_profile, street_group_id, created_at, updated_at) VALUES (:__user_id, :email, :name, :photo_url, :role, :suburb, :postcode, :state, :country, :lat, :lng, :client_profile, :mower_profile, NULL, :__now, :__now)",
+      "sql": "INSERT INTO users (id, email, name, photo_url, role, suburb, postcode, state, country, lat, lng, client_profile, mower_profile, street_group_id, created_at, updated_at) SELECT :__user_id, :email, :name, :photo_url, :role, :suburb, :postcode, :state, :country, :lat, :lng, :client_profile, :mower_profile, NULL, :__now, :__now WHERE :role IN ('client', 'mower')",
       "params": {
         "email": {
           "type": "string",
@@ -107,9 +107,9 @@
     },
     {
       "name": "update_me",
-      "description": "Update the caller's own user row (profile fields; only supplied fields change, others keep their value)",
+      "description": "Update the caller's own profile fields; role changes are restricted to admin_set_role and a group pointer must match verified membership",
       "operation": "execute",
-      "sql": "UPDATE users SET email = CASE WHEN :set_email = 1 THEN :email ELSE email END, name = CASE WHEN :set_name = 1 THEN :name ELSE name END, photo_url = CASE WHEN :set_photo_url = 1 THEN :photo_url ELSE photo_url END, role = CASE WHEN :set_role = 1 THEN :role ELSE role END, suburb = CASE WHEN :set_suburb = 1 THEN :suburb ELSE suburb END, postcode = CASE WHEN :set_postcode = 1 THEN :postcode ELSE postcode END, state = CASE WHEN :set_state = 1 THEN :state ELSE state END, country = CASE WHEN :set_country = 1 THEN :country ELSE country END, lat = CASE WHEN :set_lat = 1 THEN :lat ELSE lat END, lng = CASE WHEN :set_lng = 1 THEN :lng ELSE lng END, client_profile = CASE WHEN :set_client_profile = 1 THEN :client_profile ELSE client_profile END, mower_profile = CASE WHEN :set_mower_profile = 1 THEN :mower_profile ELSE mower_profile END, street_group_id = CASE WHEN :set_street_group_id = 1 THEN :street_group_id ELSE street_group_id END, updated_at = :__now WHERE id = :__user_id",
+      "sql": "UPDATE users SET email = CASE WHEN :set_email = 1 THEN :email ELSE email END, name = CASE WHEN :set_name = 1 THEN :name ELSE name END, photo_url = CASE WHEN :set_photo_url = 1 THEN :photo_url ELSE photo_url END, suburb = CASE WHEN :set_suburb = 1 THEN :suburb ELSE suburb END, postcode = CASE WHEN :set_postcode = 1 THEN :postcode ELSE postcode END, state = CASE WHEN :set_state = 1 THEN :state ELSE state END, country = CASE WHEN :set_country = 1 THEN :country ELSE country END, lat = CASE WHEN :set_lat = 1 THEN :lat ELSE lat END, lng = CASE WHEN :set_lng = 1 THEN :lng ELSE lng END, client_profile = CASE WHEN :set_client_profile = 1 THEN :client_profile ELSE client_profile END, mower_profile = CASE WHEN :set_mower_profile = 1 THEN :mower_profile ELSE mower_profile END, street_group_id = CASE WHEN :set_street_group_id = 1 THEN :street_group_id ELSE street_group_id END, updated_at = :__now WHERE id = :__user_id AND (:set_street_group_id = 0 OR :street_group_id IS NULL OR EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :street_group_id AND EXISTS (SELECT 1 FROM json_each(g.member_ids) WHERE value = :__user_id)))",
       "params": {
         "set_email": { "type": "integer", "default": 0, "optional": true },
         "email": { "type": "string", "optional": true },
@@ -117,8 +117,6 @@
         "name": { "type": "string", "optional": true },
         "set_photo_url": { "type": "integer", "default": 0, "optional": true },
         "photo_url": { "type": "string", "optional": true },
-        "set_role": { "type": "integer", "default": 0, "optional": true },
-        "role": { "type": "string", "optional": true },
         "set_suburb": { "type": "integer", "default": 0, "optional": true },
         "suburb": { "type": "string", "optional": true },
         "set_postcode": { "type": "integer", "default": 0, "optional": true },
@@ -219,7 +217,7 @@
       "name": "create_group",
       "description": "Create a street group with the caller as its sole admin and member (created_by is the verified caller)",
       "operation": "execute",
-      "sql": "INSERT INTO street_groups (id, name, street_name, suburb, postcode, state, country, center_lat, center_lng, admin_ids, member_ids, assigned_mower_id, status, created_at, updated_at) VALUES (:id, :name, :street_name, :suburb, :postcode, :state, :country, :center_lat, :center_lng, json_array(:__user_id), json_array(:__user_id), NULL, 'forming', :__now, :__now)",
+      "sql": "INSERT INTO street_groups (id, name, street_name, suburb, postcode, state, country, center_lat, center_lng, admin_ids, member_ids, assigned_mower_id, status, created_at, updated_at) SELECT :id, :name, :street_name, :suburb, :postcode, :state, :country, :center_lat, :center_lng, json_array(:__user_id), json_array(:__user_id), NULL, 'forming', :__now, :__now FROM users u WHERE u.id = :__user_id AND u.role = 'client' AND u.street_group_id IS NULL",
       "params": {
         "id": {
           "type": "string"
@@ -262,7 +260,7 @@
       "name": "update_group",
       "description": "Update a street group's profile/status/assigned mower (group admins or platform admins only)",
       "operation": "execute",
-      "sql": "UPDATE street_groups SET name = CASE WHEN :set_name = 1 THEN :name ELSE name END, street_name = CASE WHEN :set_street_name = 1 THEN :street_name ELSE street_name END, suburb = CASE WHEN :set_suburb = 1 THEN :suburb ELSE suburb END, postcode = CASE WHEN :set_postcode = 1 THEN :postcode ELSE postcode END, state = CASE WHEN :set_state = 1 THEN :state ELSE state END, country = CASE WHEN :set_country = 1 THEN :country ELSE country END, center_lat = CASE WHEN :set_center_lat = 1 THEN :center_lat ELSE center_lat END, center_lng = CASE WHEN :set_center_lng = 1 THEN :center_lng ELSE center_lng END, status = CASE WHEN :set_status = 1 THEN :status ELSE status END, assigned_mower_id = CASE WHEN :set_assigned_mower_id = 1 THEN :assigned_mower_id ELSE assigned_mower_id END, updated_at = :__now WHERE id = :id AND (EXISTS (SELECT 1 FROM json_each(street_groups.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
+      "sql": "UPDATE street_groups SET name = CASE WHEN :set_name = 1 THEN :name ELSE name END, street_name = CASE WHEN :set_street_name = 1 THEN :street_name ELSE street_name END, suburb = CASE WHEN :set_suburb = 1 THEN :suburb ELSE suburb END, postcode = CASE WHEN :set_postcode = 1 THEN :postcode ELSE postcode END, state = CASE WHEN :set_state = 1 THEN :state ELSE state END, country = CASE WHEN :set_country = 1 THEN :country ELSE country END, center_lat = CASE WHEN :set_center_lat = 1 THEN :center_lat ELSE center_lat END, center_lng = CASE WHEN :set_center_lng = 1 THEN :center_lng ELSE center_lng END, status = CASE WHEN :set_status = 1 THEN :status ELSE status END, assigned_mower_id = CASE WHEN :set_assigned_mower_id = 1 THEN :assigned_mower_id ELSE assigned_mower_id END, updated_at = :__now WHERE id = :id AND (EXISTS (SELECT 1 FROM json_each(street_groups.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) AND (:set_assigned_mower_id = 0 OR :assigned_mower_id IS NULL OR EXISTS (SELECT 1 FROM users m WHERE m.id = :assigned_mower_id AND m.role = 'mower'))",
       "params": {
         "id": { "type": "string" },
         "set_name": { "type": "integer", "default": 0, "optional": true },
@@ -290,9 +288,9 @@
     },
     {
       "name": "add_group_member",
-      "description": "Add a user to a group's member list (self-join, or a group admin / platform admin adding someone). No-op if already a member.",
+      "description": "Add a client to a group's member list (group admins/platform admins; a caller may add themself only after requesting to join). No-op if already a member.",
       "operation": "execute",
-      "sql": "UPDATE street_groups SET member_ids = json_insert(member_ids, '$[#]', :user_id), updated_at = :__now WHERE id = :group_id AND NOT EXISTS (SELECT 1 FROM json_each(member_ids) WHERE value = :user_id) AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
+      "sql": "UPDATE street_groups SET member_ids = json_insert(member_ids, '$[#]', :user_id), updated_at = :__now WHERE id = :group_id AND NOT EXISTS (SELECT 1 FROM json_each(member_ids) WHERE value = :user_id) AND EXISTS (SELECT 1 FROM users u WHERE u.id = :user_id AND u.role = 'client' AND (u.street_group_id IS NULL OR u.street_group_id = :group_id)) AND ((EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) OR (:user_id = :__user_id AND EXISTS (SELECT 1 FROM street_group_interests i WHERE i.group_id = :group_id AND i.user_id = :__user_id)))",
       "params": {
         "group_id": {
           "type": "string"
@@ -305,9 +303,9 @@
     },
     {
       "name": "remove_group_member",
-      "description": "Remove a user from a group's member list (self-leave, or a group admin / platform admin removing someone)",
+      "description": "Remove a non-admin user from a group's member list (self-leave, or a group admin / platform admin removing someone); remove_group_admin must run first for admins",
       "operation": "execute",
-      "sql": "UPDATE street_groups SET member_ids = (SELECT COALESCE(json_group_array(value), json_array()) FROM json_each(member_ids) WHERE value != :user_id), updated_at = :__now WHERE id = :group_id AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
+      "sql": "UPDATE street_groups SET member_ids = (SELECT COALESCE(json_group_array(value), json_array()) FROM json_each(member_ids) WHERE value != :user_id), updated_at = :__now WHERE id = :group_id AND NOT EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :user_id) AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
       "params": {
         "group_id": {
           "type": "string"
@@ -322,7 +320,7 @@
       "name": "add_group_admin",
       "description": "Add a user to a group's admin list (existing group admins or platform admins only). No-op if already an admin.",
       "operation": "execute",
-      "sql": "UPDATE street_groups SET admin_ids = json_insert(admin_ids, '$[#]', :user_id), updated_at = :__now WHERE id = :group_id AND NOT EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :user_id) AND (EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
+      "sql": "UPDATE street_groups SET admin_ids = json_insert(admin_ids, '$[#]', :user_id), updated_at = :__now WHERE id = :group_id AND NOT EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :user_id) AND EXISTS (SELECT 1 FROM json_each(member_ids) WHERE value = :user_id) AND (EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
       "params": {
         "group_id": {
           "type": "string"
@@ -337,7 +335,7 @@
       "name": "remove_group_admin",
       "description": "Remove a user from a group's admin list (existing group admins or platform admins only)",
       "operation": "execute",
-      "sql": "UPDATE street_groups SET admin_ids = (SELECT COALESCE(json_group_array(value), json_array()) FROM json_each(admin_ids) WHERE value != :user_id), updated_at = :__now WHERE id = :group_id AND (EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
+      "sql": "UPDATE street_groups SET admin_ids = (SELECT COALESCE(json_group_array(value), json_array()) FROM json_each(admin_ids) WHERE value != :user_id), updated_at = :__now WHERE id = :group_id AND (EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) AND EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value != :user_id)",
       "params": {
         "group_id": {
           "type": "string"
@@ -370,7 +368,7 @@
       "name": "create_group_interest",
       "description": "Express the caller's interest in joining a street group (upsert on group+user; the caller is the applicant)",
       "operation": "execute",
-      "sql": "INSERT INTO street_group_interests (id, group_id, user_id, message, created_at) VALUES (:id, :group_id, :__user_id, :message, :__now) ON CONFLICT (group_id, user_id) DO UPDATE SET message = excluded.message, created_at = excluded.created_at",
+      "sql": "INSERT INTO street_group_interests (id, group_id, user_id, message, created_at) SELECT :id, :group_id, :__user_id, :message, :__now FROM users u WHERE u.id = :__user_id AND u.role = 'client' AND u.street_group_id IS NULL AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND g.status IN ('forming', 'active') AND NOT EXISTS (SELECT 1 FROM json_each(g.member_ids) WHERE value = :__user_id)) ON CONFLICT (group_id, user_id) DO UPDATE SET message = excluded.message, created_at = excluded.created_at",
       "params": {
         "id": {
           "type": "string"
@@ -440,7 +438,7 @@
       "name": "create_schedule",
       "description": "Create a schedule for a group (group admins or platform admins only)",
       "operation": "execute",
-      "sql": "INSERT INTO schedules (id, group_id, day_of_week, start_time, mower_id, status, due_date, completed_at, created_at, updated_at) SELECT :id, :group_id, :day_of_week, :start_time, :mower_id, 'planned', :due_date, NULL, :__now, :__now WHERE EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')))",
+      "sql": "INSERT INTO schedules (id, group_id, day_of_week, start_time, mower_id, status, due_date, completed_at, created_at, updated_at) SELECT :id, :group_id, :day_of_week, :start_time, :mower_id, 'planned', :due_date, NULL, :__now, :__now WHERE EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))) AND (:mower_id IS NULL OR EXISTS (SELECT 1 FROM users m WHERE m.id = :mower_id AND m.role = 'mower'))",
       "params": {
         "id": {
           "type": "string"
@@ -471,7 +469,7 @@
       "name": "update_schedule",
       "description": "Update a schedule (group admins/platform admins, or the assigned mower updating status/completion)",
       "operation": "execute",
-      "sql": "UPDATE schedules SET day_of_week = CASE WHEN :set_day_of_week = 1 THEN :day_of_week ELSE day_of_week END, start_time = CASE WHEN :set_start_time = 1 THEN :start_time ELSE start_time END, mower_id = CASE WHEN :set_mower_id = 1 THEN :mower_id ELSE mower_id END, status = CASE WHEN :set_status = 1 THEN :status ELSE status END, due_date = CASE WHEN :set_due_date = 1 THEN :due_date ELSE due_date END, completed_at = CASE WHEN :set_completed_at = 1 THEN :completed_at ELSE completed_at END, updated_at = :__now WHERE id = :id AND (schedules.mower_id = :__user_id OR EXISTS (SELECT 1 FROM street_groups g WHERE g.id = schedules.group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))))",
+      "sql": "UPDATE schedules SET day_of_week = CASE WHEN :set_day_of_week = 1 THEN :day_of_week ELSE day_of_week END, start_time = CASE WHEN :set_start_time = 1 THEN :start_time ELSE start_time END, mower_id = CASE WHEN :set_mower_id = 1 THEN :mower_id ELSE mower_id END, status = CASE WHEN :set_status = 1 THEN :status ELSE status END, due_date = CASE WHEN :set_due_date = 1 THEN :due_date ELSE due_date END, completed_at = CASE WHEN :set_completed_at = 1 THEN :completed_at ELSE completed_at END, updated_at = :__now WHERE id = :id AND (:set_mower_id = 0 OR :mower_id IS NULL OR EXISTS (SELECT 1 FROM users m WHERE m.id = :mower_id AND m.role = 'mower')) AND (EXISTS (SELECT 1 FROM street_groups g WHERE g.id = schedules.group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))) OR (schedules.mower_id = :__user_id AND :set_day_of_week = 0 AND :set_start_time = 0 AND :set_mower_id = 0 AND :set_due_date = 0 AND :set_status = 1 AND :status = 'done' AND :set_completed_at = 1))",
       "params": {
         "id": { "type": "string" },
         "set_day_of_week": { "type": "integer", "default": 0, "optional": true },
@@ -505,7 +503,7 @@
       "name": "create_review",
       "description": "Create a mower review authored by the caller (reviewer is the verified caller)",
       "operation": "execute",
-      "sql": "INSERT INTO mower_reviews (id, mower_id, reviewer_id, group_id, schedule_id, rating, comment, created_at, updated_at) VALUES (:id, :mower_id, :__user_id, :group_id, :schedule_id, :rating, :comment, :__now, :__now)",
+      "sql": "INSERT INTO mower_reviews (id, mower_id, reviewer_id, group_id, schedule_id, rating, comment, created_at, updated_at) SELECT :id, :mower_id, :__user_id, :group_id, :schedule_id, :rating, :comment, :__now, :__now FROM users u WHERE u.id = :__user_id AND u.role = 'client' AND EXISTS (SELECT 1 FROM users m WHERE m.id = :mower_id AND m.role = 'mower') AND (:group_id IS NULL OR EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND EXISTS (SELECT 1 FROM json_each(g.member_ids) WHERE value = :__user_id))) AND (:schedule_id IS NULL OR EXISTS (SELECT 1 FROM schedules s WHERE s.id = :schedule_id AND s.group_id = :group_id AND s.mower_id = :mower_id AND s.status = 'done'))",
       "params": {
         "id": {
           "type": "string"
@@ -595,7 +593,7 @@
       "name": "record_history",
       "description": "Record a completed-job history entry for the caller as the mower (mower_id is the verified caller)",
       "operation": "execute",
-      "sql": "INSERT INTO history_records (id, mower_id, group_id, schedule_id, street_name, area_sqm, duration_min, income, date) VALUES (:id, :__user_id, :group_id, :schedule_id, :street_name, :area_sqm, :duration_min, :income, :date)",
+      "sql": "INSERT INTO history_records (id, mower_id, group_id, schedule_id, street_name, area_sqm, duration_min, income, date) SELECT :id, :__user_id, :group_id, :schedule_id, :street_name, :area_sqm, :duration_min, :income, :date FROM users u WHERE u.id = :__user_id AND u.role = 'mower' AND (:schedule_id IS NULL OR EXISTS (SELECT 1 FROM schedules s WHERE s.id = :schedule_id AND s.mower_id = :__user_id AND (:group_id IS NULL OR s.group_id = :group_id)))",
       "params": {
         "id": {
           "type": "string"
@@ -672,7 +670,7 @@
       "name": "create_mower_interest",
       "description": "Express the caller's (a mower's) interest in servicing a group (upsert on mower+group; the caller is the mower)",
       "operation": "execute",
-      "sql": "INSERT INTO mower_interests (id, group_id, mower_id, message, created_at, updated_at) VALUES (:id, :group_id, :__user_id, :message, :__now, :__now) ON CONFLICT (mower_id, group_id) DO UPDATE SET message = excluded.message, updated_at = excluded.updated_at",
+      "sql": "INSERT INTO mower_interests (id, group_id, mower_id, message, created_at, updated_at) SELECT :id, :group_id, :__user_id, :message, :__now, :__now FROM users u WHERE u.id = :__user_id AND u.role = 'mower' AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND g.status = 'forming') ON CONFLICT (mower_id, group_id) DO UPDATE SET message = excluded.message, updated_at = excluded.updated_at",
       "params": {
         "id": {
           "type": "string"
@@ -706,7 +704,7 @@
       "name": "cast_vote",
       "description": "Cast or change the caller's vote on a mower interest (voter is the verified caller; upsert on interest+voter)",
       "operation": "execute",
-      "sql": "INSERT INTO mower_interest_votes (interest_id, voter_id, vote, created_at) VALUES (:interest_id, :__user_id, :vote, :__now) ON CONFLICT(interest_id, voter_id) DO UPDATE SET vote = excluded.vote, created_at = excluded.created_at",
+      "sql": "INSERT INTO mower_interest_votes (interest_id, voter_id, vote, created_at) SELECT :interest_id, :__user_id, :vote, :__now FROM mower_interests mi JOIN street_groups g ON g.id = mi.group_id JOIN users u ON u.id = :__user_id WHERE mi.id = :interest_id AND u.role = 'client' AND EXISTS (SELECT 1 FROM json_each(g.member_ids) WHERE value = :__user_id) ON CONFLICT(interest_id, voter_id) DO UPDATE SET vote = excluded.vote, created_at = excluded.created_at",
       "params": {
         "interest_id": {
           "type": "string"

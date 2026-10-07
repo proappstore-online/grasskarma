@@ -31,7 +31,7 @@ All timestamps are epoch-millis integers. Map row ↔ domain in the matching `we
 
 `web/src/lib/app.ts` exports the `app` SDK instance + `dbQuery` / `dbExec` helpers. Each area has its own file:
 
-- `users.ts` — `getMe`, `getUser`, `listUsers({ role?, suburb?, postcode? })`, `createUser`, `updateUser`, plus UI-only admin helpers `adminSetRole`, `adminDeleteUser`.
+- `users.ts` — `getMe`, `getUser`, `listUsers({ role?, suburb?, postcode? })`, `createUser`, `updateUser`, plus server-guarded admin helpers `adminSetRole`, `adminDeleteUser`.
 - `streetGroups.ts` — `listGroups({ status, suburb, postcode, adminId, memberId, mowerId })`, `getGroup`, `createGroup`, `updateGroup`, `addMember/removeMember/addAdmin/removeAdmin`, `deleteGroup`, `createGroupInterest`, `listGroupInterests`, `deleteGroupInterest`.
 - `mowerInterests.ts` — `listInterestsForGroup/Mower`, `createMowerInterest`, `deleteMowerInterest`, `castVote(interestId, voterId, vote: -1|1)`, `listVotes`, `voteTally`.
 - `schedules.ts` — `listSchedules(groupId)`, `listSchedulesForMower`, `createSchedule`, `updateSchedule`, `markCompleted`, `deleteSchedule`.
@@ -45,7 +45,7 @@ Pages and admin operations always go through these — never call `app.db.*` dir
 
 `web/src/contexts/AuthContext.tsx` wraps `useProGate` (`@proappstore/sdk/hooks`) and loads the user's `users` row from D1. State machine: `loading → signed-out → no-role → ready`. First-time `no-role` lands on `RolePicker` which writes the row with role `client` or `mower`. `admin` is promoted by an existing admin, not picked.
 
-`web/src/routes/PrivateRoute.tsx` reads `user.role` from the users row — no Firebase custom claims. Real authz is **not** server-enforced today (any signed-in user can in principle craft any SQL against this app's D1); admin operations are UI-only until the platform exposes server-side handlers. See `pas/grasskarma-port-plan.md` §0 for the full caveat.
+`web/src/routes/PrivateRoute.tsx` reads `user.role` from the users row — no Firebase custom claims. It is a UX gate only. Real authorization is enforced by the registered, authenticated server actions in root `mcp.json`: every mutation binds the verified `:__user_id` and checks the required platform-admin, group-admin, role, membership, or record-ownership relationship in SQL. The data worker does not accept raw browser SQL. Keep new reads/writes in registered actions; do not reintroduce direct `app.db.*` calls in pages or libs. See `pas/grasskarma-port-plan.md` §0 for migration history.
 
 ## v1 scope cuts
 
