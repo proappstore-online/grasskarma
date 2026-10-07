@@ -3,6 +3,27 @@ import { q, x } from './actions'
 import type { ScheduleRow } from './db'
 import type { Schedule, ScheduleStatus } from '../models'
 
+const SCHEDULE_STATUSES = new Set<ScheduleStatus>(['planned', 'done', 'skipped'])
+const SCHEDULE_TIME = /^(?:[01]\d|2[0-3]):[0-5]\d$/
+
+/**
+ * Schedule day 0 is Sunday and day 6 is Saturday; times are 24-hour HH:MM.
+ * D1 enforces the same invariant, while this provides callers a clear error
+ * before an action is sent.
+ */
+export function validateScheduleRange(input: Pick<ScheduleCreate, 'dayOfWeek' | 'startTime'>): void {
+  if (input.dayOfWeek != null && (!Number.isInteger(input.dayOfWeek) || input.dayOfWeek < 0 || input.dayOfWeek > 6)) {
+    throw new Error('Schedule day must be an integer from 0 (Sunday) to 6 (Saturday).')
+  }
+  if (input.startTime != null && !SCHEDULE_TIME.test(input.startTime)) {
+    throw new Error('Schedule start time must use 24-hour HH:MM format.')
+  }
+}
+
+export function validateScheduleStatus(status: ScheduleStatus): void {
+  if (!SCHEDULE_STATUSES.has(status)) throw new Error('Schedule status must be planned, done, or skipped.')
+}
+
 function rowToSchedule(r: ScheduleRow): Schedule {
   return {
     id: r.id,
@@ -41,6 +62,7 @@ export interface ScheduleCreate {
 
 export async function createSchedule(input: ScheduleCreate): Promise<Schedule> {
   await ensureMigrated()
+  validateScheduleRange(input)
   const id = crypto.randomUUID()
   const now = Date.now()
   await x('create_schedule', {
@@ -76,6 +98,11 @@ export interface SchedulePatch {
 
 export async function updateSchedule(id: string, patch: SchedulePatch): Promise<void> {
   await ensureMigrated()
+  validateScheduleRange({
+    dayOfWeek: patch.dayOfWeek,
+    startTime: patch.startTime,
+  })
+  if ('status' in patch && patch.status != null) validateScheduleStatus(patch.status)
   const params: Record<string, unknown> = { id }
   const set = (flag: string, col: string, val: unknown) => {
     params[flag] = 1

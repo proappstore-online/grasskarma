@@ -3,6 +3,15 @@ import { q, x } from './actions'
 import type { StreetGroupRow, StreetGroupInterestRow } from './db'
 import type { StreetGroup, StreetGroupInterest, StreetGroupStatus } from '../models'
 
+const STREET_GROUP_STATUSES = new Set<StreetGroupStatus>(['forming', 'active', 'paused', 'archived'])
+
+/** D1 has the matching CHECK constraint; retain a readable model-boundary error. */
+export function validateStreetGroupStatus(status: StreetGroupStatus): void {
+  if (!STREET_GROUP_STATUSES.has(status)) {
+    throw new Error('Street-group status must be forming, active, paused, or archived.')
+  }
+}
+
 function parseIds(s: string): string[] {
   try {
     const v = JSON.parse(s)
@@ -173,6 +182,7 @@ export interface GroupPatch {
 
 export async function updateGroup(id: string, patch: GroupPatch): Promise<void> {
   await ensureMigrated()
+  if ('status' in patch && patch.status != null) validateStreetGroupStatus(patch.status)
   const params: Record<string, unknown> = { id }
   const set = (flag: string, col: string, val: unknown) => {
     params[flag] = 1

@@ -463,7 +463,7 @@
     },
     {
       "name": "create_schedule",
-      "description": "Create a schedule for a group (group admins or platform admins only)",
+      "description": "Create a schedule for a group (group admins or platform admins only). day_of_week is 0 (Sunday) through 6 (Saturday); start_time is 24-hour HH:MM.",
       "operation": "execute",
       "sql": "INSERT INTO schedules (id, group_id, day_of_week, start_time, mower_id, status, due_date, completed_at, created_at, updated_at) SELECT :id, :group_id, :day_of_week, :start_time, :mower_id, 'planned', :due_date, NULL, :__now, :__now WHERE EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))) AND (:mower_id IS NULL OR EXISTS (SELECT 1 FROM users m WHERE m.id = :mower_id AND m.role = 'mower'))",
       "params": {
@@ -494,7 +494,7 @@
     },
     {
       "name": "update_schedule",
-      "description": "Update a schedule (group admins/platform admins, or the assigned mower updating status/completion)",
+      "description": "Update a schedule (group admins/platform admins, or the assigned mower updating status/completion). day_of_week is 0 (Sunday) through 6 (Saturday); start_time is 24-hour HH:MM.",
       "operation": "execute",
       "sql": "UPDATE schedules SET day_of_week = CASE WHEN :set_day_of_week = 1 THEN :day_of_week ELSE day_of_week END, start_time = CASE WHEN :set_start_time = 1 THEN :start_time ELSE start_time END, mower_id = CASE WHEN :set_mower_id = 1 THEN :mower_id ELSE mower_id END, status = CASE WHEN :set_status = 1 THEN :status ELSE status END, due_date = CASE WHEN :set_due_date = 1 THEN :due_date ELSE due_date END, completed_at = CASE WHEN :set_completed_at = 1 THEN :completed_at ELSE completed_at END, updated_at = :__now WHERE id = :id AND (:set_mower_id = 0 OR :mower_id IS NULL OR EXISTS (SELECT 1 FROM users m WHERE m.id = :mower_id AND m.role = 'mower')) AND (EXISTS (SELECT 1 FROM street_groups g WHERE g.id = schedules.group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))) OR (schedules.mower_id = :__user_id AND :set_day_of_week = 0 AND :set_start_time = 0 AND :set_mower_id = 0 AND :set_due_date = 0 AND :set_status = 1 AND :status = 'done' AND :set_completed_at = 1))",
       "params": {
