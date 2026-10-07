@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { approveGroupInterest, deleteGroupInterest, getGroup, listGroupInterests } from '../../lib/streetGroups'
@@ -9,6 +9,42 @@ import type { Schedule, StreetGroup, StreetGroupInterest, User } from '../../mod
 type RequestCard = { interest: StreetGroupInterest; applicant: User | null }
 
 const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+export type GroupManagementView = 'loading' | 'setup' | 'app' | 'content'
+
+// Kept separate from the component so every route outcome is explicit and
+// testable. In particular, a fully-loaded client without a group belongs in
+// setup, rather than on a page that can only render a perpetual loader.
+export function resolveGroupManagementView({
+  hasProfile,
+  loading,
+  streetGroupId,
+  group,
+  userId,
+}: {
+  hasProfile: boolean
+  loading: boolean
+  streetGroupId: string | null | undefined
+  group: StreetGroup | null
+  userId: string | null | undefined
+}): GroupManagementView {
+  if (!hasProfile || loading) return 'loading'
+  if (!streetGroupId) return 'setup'
+  if (!group || !userId || !group.adminIds.includes(userId)) return 'app'
+  return 'content'
+}
+
+export function shouldCommitGroupManagementLoad({
+  requestGeneration,
+  activeGeneration,
+  mounted,
+}: {
+  requestGeneration: number
+  activeGeneration: number
+  mounted: boolean
+}): boolean {
+  return mounted && requestGeneration === activeGeneration
+}
 
 export default function GroupManagementPage() {
   const { user } = useAuth()
@@ -22,28 +58,69 @@ export default function GroupManagementPage() {
   const [dayOfWeek, setDayOfWeek] = useState('')
   const [startTime, setStartTime] = useState('')
   const [dueDate, setDueDate] = useState('')
+  const mounted = useRef(false)
+  const loadGeneration = useRef(0)
 
-  const load = async () => {
-    if (!user?.streetGroupId) return
-    setLoading(true)
-    setError(null)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+      loadGeneration.current += 1
+    }
+  }, [])
+
+  const load = useCallback(async () => {
+    const streetGroupId = user?.streetGroupId
+    const requestGeneration = ++loadGeneration.current
+    const canCommit = () => shouldCommitGroupManagementLoad({
+      requestGeneration,
+      activeGeneration: loadGeneration.current,
+      mounted: mounted.current,
+    })
+
+    // AuthGate normally means this page is not mounted until a profile exists.
+    // Retaining the loading state here also avoids redirecting during a delayed
+    // profile response when the page is rendered in isolation.
+    if (!user) return
+    if (!streetGroupId) {
+      if (canCommit()) {
+        setGroup(null)
+        setRequests([])
+        setSchedules([])
+        setError(null)
+        setLoading(false)
+      }
+      return
+    }
+
+    if (canCommit()) {
+      setLoading(true)
+      setError(null)
+    }
     try {
-      const g = await getGroup(user.streetGroupId)
-      if (!g) return
+      const g = await getGroup(streetGroupId)
+      if (!canCommit()) return
+      if (!g) {
+        setGroup(null)
+        setRequests([])
+        setSchedules([])
+        return
+      }
       const [pending, planned] = await Promise.all([listGroupInterests(g.id), listSchedules(g.id)])
       const applicants = await Promise.all(pending.map(async (interest) => ({ interest, applicant: await getUser(interest.userId) })))
+      if (!canCommit()) return
       setGroup(g)
       setRequests(applicants)
       setSchedules(planned)
     } catch (err) {
       console.error(err)
-      setError('Could not load the group management details.')
+      if (canCommit()) setError('Could not load the group management details.')
     } finally {
-      setLoading(false)
+      if (canCommit()) setLoading(false)
     }
-  }
+  }, [user?.streetGroupId, user])
 
-  useEffect(() => { void load() }, [user?.streetGroupId])
+  useEffect(() => { void load() }, [load])
 
   const approve = async (request: RequestCard) => {
     if (!group) return
@@ -121,8 +198,20 @@ export default function GroupManagementPage() {
     }
   }
 
-  if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (!group || !user || !group.adminIds.includes(user.id)) return <Navigate to="/app" replace />
+  const view = resolveGroupManagementView({
+    hasProfile: !!user,
+    loading,
+    streetGroupId: user?.streetGroupId,
+    group,
+    userId: user?.id,
+  })
+
+  if (view === 'loading') return <p className="text-sm text-[var(--muted)]">Loading…</p>
+  if (view === 'setup') return <Navigate to="/app/setup" replace />
+  if (view === 'app') return <Navigate to="/app" replace />
+  // `content` means both values are present. Keep this guard for TypeScript
+  // and for a defensive fallback if a future view state is added.
+  if (!group || !user) return <Navigate to="/app" replace />
 
   return (
     <section className="mx-auto max-w-3xl space-y-8">
