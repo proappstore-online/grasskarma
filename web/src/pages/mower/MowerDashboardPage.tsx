@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { listGroups } from '../../lib/streetGroups'
-import { listSchedulesForMower } from '../../lib/schedules'
+import { completeSchedule, listSchedulesForMower } from '../../lib/schedules'
 import { listHistory } from '../../lib/history'
 import { averageRating } from '../../lib/reviews'
 import type { StreetGroup, Schedule, HistoryRecord } from '../../models'
@@ -20,6 +20,8 @@ export default function MowerDashboardPage() {
   const [upcoming, setUpcoming] = useState<Schedule[]>([])
   const [history, setHistory] = useState<HistoryRecord[]>([])
   const [rating, setRating] = useState<{ average: number; count: number } | null>(null)
+  const [completing, setCompleting] = useState<string | null>(null)
+  const [completionError, setCompletionError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -53,6 +55,28 @@ export default function MowerDashboardPage() {
       alive = false
     }
   }, [user, navigate])
+
+  const complete = async (schedule: Schedule) => {
+    const group = assigned.find((candidate) => candidate.id === schedule.groupId)
+    if (!group) return
+    setCompleting(schedule.id)
+    setCompletionError(null)
+    try {
+      await completeSchedule({
+        scheduleId: schedule.id,
+        groupId: group.id,
+        streetName: group.streetName ?? group.name,
+      })
+      const refreshedHistory = await listHistory(user!.id, 10)
+      setHistory(refreshedHistory)
+      setUpcoming((current) => current.filter((item) => item.id !== schedule.id))
+    } catch (err) {
+      console.error(err)
+      setCompletionError('Could not complete this job. No history record was added.')
+    } finally {
+      setCompleting(null)
+    }
+  }
 
   if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
   if (error) return <p className="text-sm text-[var(--error)]">{error}</p>
@@ -100,22 +124,23 @@ export default function MowerDashboardPage() {
 
       <div className="rounded-lg border border-[var(--line)] bg-[var(--glass)] p-5">
         <h2 className="display-font text-lg font-semibold">Upcoming mows</h2>
+        {completionError && <p className="mt-2 text-sm text-[var(--error)]">{completionError}</p>}
         {upcoming.length === 0 ? (
           <p className="mt-2 text-sm text-[var(--muted)]">No scheduled jobs.</p>
         ) : (
           <ul className="mt-3 divide-y divide-[var(--line)]">
             {upcoming.slice(0, 5).map((s) => (
-              <li key={s.id} className="flex items-center justify-between py-2 text-sm">
+              <li key={s.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                 <span>
                   {s.dueDate ? new Date(s.dueDate).toLocaleDateString() : '—'}
                   {s.startTime ? ` · ${s.startTime}` : ''}
                 </span>
-                <Link
-                  to={`/mower/history`}
-                  className="text-xs text-[var(--accent)] hover:underline"
-                >
-                  Details
-                </Link>
+                <div className="flex items-center gap-3">
+                  <Link to={`/mower/history`} className="text-xs text-[var(--accent)] hover:underline">History</Link>
+                  <button onClick={() => void complete(s)} disabled={completing === s.id} className="rounded-md bg-[var(--accent)] px-2 py-1 text-xs font-medium text-white disabled:opacity-50">
+                    {completing === s.id ? 'Completing…' : 'Mark complete'}
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

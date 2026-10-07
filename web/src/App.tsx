@@ -14,6 +14,7 @@ import MembershipPage from './pages/UserInfoPage/MembershipPage'
 import MembershipSetupPage from './pages/UserInfoPage/MembershipSetupPage'
 import ShareHirePage from './pages/UserInfoPage/ShareHirePage'
 import MowersPage from './pages/UserInfoPage/MowersPage'
+import GroupManagementPage from './pages/UserInfoPage/GroupManagementPage'
 import UserProfilePage from './pages/UserProfile/UserProfilePage'
 import UserProfileEditPage from './pages/UserProfile/UserProfileEditPage'
 import UserPreferencesPage from './pages/UserProfile/UserPreferencesPage'
@@ -52,6 +53,7 @@ const router = createBrowserRouter([
           { path: 'membership/setup', element: <MembershipSetupPage /> },
           { path: 'sharehire', element: <ShareHirePage /> },
           { path: 'mowers', element: <MowersPage /> },
+          { path: 'manage', element: <GroupManagementPage /> },
           { path: 'user/:userId', element: <UserProfilePage /> },
           { path: 'user/:userId/edit', element: <UserProfileEditPage /> },
           { path: 'preferences', element: <UserPreferencesPage /> },

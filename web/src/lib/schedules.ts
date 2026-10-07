@@ -123,6 +123,30 @@ export async function markCompleted(id: string): Promise<void> {
   await updateSchedule(id, { status: 'done', completedAt: now })
 }
 
+export interface ScheduleCompletion {
+  scheduleId: string
+  groupId: string
+  streetName?: string | null
+  areaSqm?: number | null
+  durationMin?: number | null
+  income?: number | null
+}
+
+/** Complete an assigned job and add its mower history entry atomically. */
+export async function completeSchedule(input: ScheduleCompletion): Promise<void> {
+  await ensureMigrated()
+  await x('complete_schedule', {
+    schedule_id: input.scheduleId,
+    group_id: input.groupId,
+    history_id: crypto.randomUUID(),
+    street_name: input.streetName ?? null,
+    area_sqm: input.areaSqm ?? null,
+    duration_min: input.durationMin ?? null,
+    income: input.income ?? null,
+    date: Date.now(),
+  })
+}
+
 export async function deleteSchedule(id: string): Promise<void> {
   await ensureMigrated()
   await x('delete_schedule', { id })

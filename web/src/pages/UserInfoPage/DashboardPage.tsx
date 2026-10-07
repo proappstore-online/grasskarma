@@ -85,6 +85,7 @@ export default function DashboardPage() {
           {group.memberIds.length} member{group.memberIds.length === 1 ? '' : 's'}
           {isAdmin ? ' · You are an admin' : ''}
         </p>
+        {isAdmin && <Link to="/app/manage" className="inline-block text-sm text-[var(--accent)] hover:underline">Manage group →</Link>}
       </header>
 
       <div className="grid gap-6 md:grid-cols-2">

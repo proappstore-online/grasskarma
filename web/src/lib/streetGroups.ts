@@ -252,3 +252,13 @@ export async function deleteGroupInterest(id: string): Promise<void> {
   await ensureMigrated()
   await x('delete_group_interest', { id })
 }
+
+/**
+ * Accept a pending request in one data-worker transaction. This avoids the
+ * misleading state where a request is removed but the applicant was not made
+ * a member (or vice versa) if a later write fails.
+ */
+export async function approveGroupInterest(groupId: string, interestId: string, userId: string): Promise<void> {
+  await ensureMigrated()
+  await x('approve_group_interest', { group_id: groupId, interest_id: interestId, user_id: userId })
+}

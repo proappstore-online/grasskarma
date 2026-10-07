@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { listInterestsForGroup, voteTally, castVote, listVotes } from '../../lib/mowerInterests'
+import { getGroup, updateGroup } from '../../lib/streetGroups'
 import { getUser } from '../../lib/users'
 import type { MowerInterest, User } from '../../models'
 
@@ -18,6 +19,8 @@ export default function MowersPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [voting, setVoting] = useState<string | null>(null)
+  const [assignedMowerId, setAssignedMowerId] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     if (!user?.streetGroupId) {
@@ -27,7 +30,7 @@ export default function MowersPage() {
     let alive = true
     const run = async () => {
       try {
-        const interests = await listInterestsForGroup(user.streetGroupId!)
+        const [interests, group] = await Promise.all([listInterestsForGroup(user.streetGroupId!), getGroup(user.streetGroupId!)])
         const enriched = await Promise.all(
           interests.map(async (i) => {
             const [mower, tally, votes] = await Promise.all([
@@ -40,7 +43,11 @@ export default function MowersPage() {
             return { interest: i, mower, tally, myVote: my?.vote ?? null } as Card
           }),
         )
-        if (alive) setCards(enriched.filter((c): c is Card => !!c))
+        if (alive) {
+          setCards(enriched.filter((c): c is Card => !!c))
+          setAssignedMowerId(group?.assignedMowerId ?? null)
+          setIsAdmin(!!group?.adminIds.includes(user.id))
+        }
       } catch (err) {
         console.error(err)
         if (alive) setError('Failed to load mowers.')
@@ -63,6 +70,21 @@ export default function MowersPage() {
       setCards((prev) => prev.map((c) => (c.interest.id === interestId ? { ...c, myVote: vote, tally } : c)))
     } catch (err) {
       console.error(err)
+    } finally {
+      setVoting(null)
+    }
+  }
+
+  const handleAssign = async (mowerId: string) => {
+    if (!user?.streetGroupId) return
+    setVoting(`assign:${mowerId}`)
+    setError(null)
+    try {
+      await updateGroup(user.streetGroupId, { assignedMowerId: mowerId })
+      setAssignedMowerId(mowerId)
+    } catch (err) {
+      console.error(err)
+      setError('Could not assign that mower.')
     } finally {
       setVoting(null)
     }
@@ -156,6 +178,17 @@ export default function MowersPage() {
                   </button>
                 </div>
               </div>
+              {isAdmin && (
+                <button
+                  onClick={() => void handleAssign(mower.id)}
+                  disabled={voting === `assign:${mower.id}` || assignedMowerId === mower.id}
+                  className={`mt-3 w-full rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50 ${
+                    assignedMowerId === mower.id ? 'bg-[var(--secondary-soft)] text-[var(--success)]' : 'bg-[var(--accent)] text-white hover:opacity-90'
+                  }`}
+                >
+                  {assignedMowerId === mower.id ? 'Assigned mower' : voting === `assign:${mower.id}` ? 'Assigning…' : 'Assign this mower'}
+                </button>
+              )}
             </li>
           ))}
         </ul>
