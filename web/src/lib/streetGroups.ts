@@ -103,6 +103,12 @@ export interface GroupLocation {
   postcode: string
 }
 
+type GroupLocationInput = {
+  streetName?: string | null
+  suburb?: string | null
+  postcode?: string | null
+}
+
 /** Raised when D1's normalized location uniqueness invariant finds a group. */
 export class GroupLocationConflictError extends Error {
   readonly existingGroup: StreetGroup
@@ -118,13 +124,36 @@ export class GroupLocationConflictError extends Error {
  * Model-level counterpart to the D1 location index: required, trimmed fields.
  * Case is deliberately left intact for display; D1 compares with lower(trim()).
  */
+export function validateAndNormalizeLocation(input: GroupLocationInput): GroupLocation
+export function validateAndNormalizeLocation(input: GroupLocationInput, allowPartial: true): Partial<GroupLocation>
+export function validateAndNormalizeLocation(input: GroupLocationInput, allowPartial = false): Partial<GroupLocation> {
+  const normalized: Partial<GroupLocation> = {}
+  const normalize = (field: keyof GroupLocation, message: string, value: string | null | undefined) => {
+    if (typeof value !== 'string' || !value.trim()) throw new Error(message)
+    normalized[field] = value.trim()
+  }
+
+  if (Object.hasOwn(input, 'streetName')) normalize('streetName', 'Street name is required to create or update a group.', input.streetName)
+  else if (!allowPartial) throw new Error('Street name is required to create or update a group.')
+
+  if (Object.hasOwn(input, 'suburb')) normalize('suburb', 'Suburb and 4-digit postcode are required to create or update a group.', input.suburb)
+  else if (!allowPartial) throw new Error('Suburb and 4-digit postcode are required to create or update a group.')
+
+  if (Object.hasOwn(input, 'postcode')) {
+    if (typeof input.postcode !== 'string' || !/^\d{4}$/.test(input.postcode.trim())) {
+      throw new Error('Suburb and 4-digit postcode are required to create or update a group.')
+    }
+    normalized.postcode = input.postcode.trim()
+  } else if (!allowPartial) {
+    throw new Error('Suburb and 4-digit postcode are required to create or update a group.')
+  }
+
+  return normalized
+}
+
+/** Backwards-compatible name for the complete-location create boundary. */
 export function normalizeGroupLocation(input: Pick<GroupCreate, 'streetName' | 'suburb' | 'postcode'>): GroupLocation {
-  const streetName = input.streetName.trim()
-  const suburb = input.suburb.trim()
-  const postcode = input.postcode.trim()
-  if (!streetName) throw new Error('Street name is required to create a group.')
-  if (!suburb || !/^\d{4}$/.test(postcode)) throw new Error('Suburb and 4-digit postcode are required to create a group.')
-  return { streetName, suburb, postcode }
+  return validateAndNormalizeLocation(input)
 }
 
 async function findGroupByLocation(location: GroupLocation): Promise<StreetGroup | null> {
@@ -138,7 +167,7 @@ async function findGroupByLocation(location: GroupLocation): Promise<StreetGroup
 
 export async function createGroup(input: GroupCreate): Promise<StreetGroup> {
   await ensureMigrated()
-  const location = normalizeGroupLocation(input)
+  const location = validateAndNormalizeLocation(input)
   const existing = await findGroupByLocation(location)
   if (existing) throw new GroupLocationConflictError(existing)
 
@@ -193,15 +222,32 @@ export interface GroupPatch {
 export async function updateGroup(id: string, patch: GroupPatch): Promise<void> {
   await ensureMigrated()
   if ('status' in patch && patch.status != null) validateStreetGroupStatus(patch.status)
+  const locationPatch: GroupLocationInput = {}
+  if ('streetName' in patch) locationPatch.streetName = patch.streetName
+  if ('suburb' in patch) locationPatch.suburb = patch.suburb
+  if ('postcode' in patch) locationPatch.postcode = patch.postcode
+  const normalizedLocationPatch = validateAndNormalizeLocation(locationPatch, true)
+  if (Object.keys(normalizedLocationPatch).length > 0) {
+    // Validate the complete candidate at the model boundary. The registered
+    // action repeats this check against the current row, which is the
+    // authoritative race-safe decision.
+    const current = await getGroup(id)
+    if (!current) throw new Error('Street group was not found or is no longer accessible.')
+    validateAndNormalizeLocation({
+      streetName: normalizedLocationPatch.streetName ?? current.streetName,
+      suburb: normalizedLocationPatch.suburb ?? current.suburb,
+      postcode: normalizedLocationPatch.postcode ?? current.postcode,
+    })
+  }
   const params: Record<string, unknown> = { id }
   const set = (flag: string, col: string, val: unknown) => {
     params[flag] = 1
     params[col] = val
   }
   if ('name' in patch) set('set_name', 'name', patch.name)
-  if ('streetName' in patch) set('set_street_name', 'street_name', patch.streetName ?? null)
-  if ('suburb' in patch) set('set_suburb', 'suburb', patch.suburb ?? null)
-  if ('postcode' in patch) set('set_postcode', 'postcode', patch.postcode ?? null)
+  if ('streetName' in patch) set('set_street_name', 'street_name', normalizedLocationPatch.streetName)
+  if ('suburb' in patch) set('set_suburb', 'suburb', normalizedLocationPatch.suburb)
+  if ('postcode' in patch) set('set_postcode', 'postcode', normalizedLocationPatch.postcode)
   if ('state' in patch) set('set_state', 'state', patch.state ?? null)
   if ('country' in patch) set('set_country', 'country', patch.country ?? null)
   if ('centerLat' in patch) set('set_center_lat', 'center_lat', patch.centerLat ?? null)

@@ -224,4 +224,50 @@ describe('street-group membership actions', () => {
     expect(pointer('first')).toBe('winner')
     expect(pointer('second')).toBeNull()
   })
+
+  it('rejects null, blank, and malformed location updates without changing a group', () => {
+    user('admin')
+    group('g1', ['admin'], ['admin'])
+    db.prepare("UPDATE street_groups SET street_name = 'Maple Street', suburb = 'North Melbourne', postcode = '3000' WHERE id = 'g1'").run()
+
+    expect(call('update_group', 'admin', { id: 'g1', set_street_name: 1, street_name: null }).changes).toBe(0)
+    expect(call('update_group', 'admin', { id: 'g1', set_suburb: 1, suburb: '   ' }).changes).toBe(0)
+    expect(call('update_group', 'admin', { id: 'g1', set_postcode: 1, postcode: '30A0' }).changes).toBe(0)
+
+    expect(db.prepare("SELECT street_name, suburb, postcode FROM street_groups WHERE id = 'g1'").get())
+      .toEqual({ street_name: 'Maple Street', suburb: 'North Melbourne', postcode: '3000' })
+  })
+
+  it('normalizes padded location updates and preserves the normalized location uniqueness rule', () => {
+    user('admin')
+    user('other-admin')
+    group('g1', ['admin'], ['admin'])
+    db.prepare("UPDATE street_groups SET street_name = 'Maple Street', suburb = 'North Melbourne', postcode = '3000' WHERE id = 'g1'").run()
+    group('g2', ['other-admin'], ['other-admin'])
+    db.prepare("UPDATE street_groups SET street_name = 'Oak Street', suburb = 'Fitzroy', postcode = '3065' WHERE id = 'g2'").run()
+
+    expect(() => call('update_group', 'admin', {
+      id: 'g1',
+      set_street_name: 1,
+      street_name: '  Oak Street  ',
+      set_suburb: 1,
+      suburb: '  Fitzroy  ',
+      set_postcode: 1,
+      postcode: ' 3065 ',
+    })).toThrow('UNIQUE constraint failed')
+    expect(db.prepare("SELECT street_name, suburb, postcode FROM street_groups WHERE id = 'g1'").get())
+      .toEqual({ street_name: 'Maple Street', suburb: 'North Melbourne', postcode: '3000' })
+
+    expect(call('update_group', 'admin', {
+      id: 'g1',
+      set_street_name: 1,
+      street_name: '  Collins Street  ',
+      set_suburb: 1,
+      suburb: '  Melbourne  ',
+      set_postcode: 1,
+      postcode: ' 3000 ',
+    }).changes).toBe(1)
+    expect(db.prepare("SELECT street_name, suburb, postcode FROM street_groups WHERE id = 'g1'").get())
+      .toEqual({ street_name: 'Collins Street', suburb: 'Melbourne', postcode: '3000' })
+  })
 })
