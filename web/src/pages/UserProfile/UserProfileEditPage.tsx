@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { getUser, updateUser } from '../../lib/users'
 import { uploadAvatar } from '../../lib/photos'
+import { normalizePublicContactEmail } from '../../lib/mowerContacts'
 import type { User, ClientProfile, MowerProfile } from '../../models'
 
 export default function UserProfileEditPage() {
@@ -24,6 +25,7 @@ export default function UserProfileEditPage() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [clientProfile, setClientProfile] = useState<ClientProfile>({})
   const [mowerProfile, setMowerProfile] = useState<MowerProfile>({ serviceRadiusKm: 0 })
+  const [publicContactEmail, setPublicContactEmail] = useState('')
 
   useEffect(() => {
     if (!userId) {
@@ -53,6 +55,7 @@ export default function UserProfileEditPage() {
         setPhotoUrl(u.photoUrl)
         setClientProfile(u.clientProfile ?? {})
         setMowerProfile(u.mowerProfile ?? { serviceRadiusKm: 0 })
+        setPublicContactEmail(u.publicContactEmail ?? '')
       } catch (err) {
         console.error(err)
         if (alive) setError('Failed to load profile.')
@@ -94,6 +97,7 @@ export default function UserProfileEditPage() {
         postcode: postcode.trim() || null,
         state: state.trim() || null,
         photoUrl,
+        publicContactEmail: user.role === 'mower' ? normalizePublicContactEmail(publicContactEmail) : undefined,
         clientProfile: user.role === 'client' ? clientProfile : undefined,
         mowerProfile:
           user.role === 'mower'
@@ -201,6 +205,15 @@ export default function UserProfileEditPage() {
             value={mowerProfile.ratePerM2?.toString() ?? ''}
             onChange={(v) => setMowerProfile({ ...mowerProfile, ratePerM2: v ? Number(v) : undefined })}
           />
+          <Field
+            label="Public contact email"
+            type="email"
+            value={publicContactEmail}
+            onChange={setPublicContactEmail}
+          />
+          <p className="-mt-2 text-xs text-[var(--muted)]">
+            Optional. Clients can use this address from the hire directory; your account email is never shared.
+          </p>
           <TextArea
             label="Bio"
             value={mowerProfile.bio ?? ''}

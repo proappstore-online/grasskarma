@@ -3,6 +3,7 @@ import { ensureMigrated } from './db'
 import { q, x } from './actions'
 import type { UserRow } from './db'
 import type { User, Role, ClientProfile, MowerProfile } from '../models'
+import { getPublicMowerContact } from './mowerContacts'
 
 function parseJson<T>(s: string | null): T | null {
   if (!s) return null
@@ -16,6 +17,7 @@ function parseJson<T>(s: string | null): T | null {
 function rowToUser(r: UserRow): User {
   return {
     id: r.id,
+    publicContactEmail: r.public_contact_email,
     email: r.email,
     name: r.name,
     photoUrl: r.photo_url,
@@ -44,7 +46,12 @@ export async function getMe(): Promise<User | null> {
 export async function getUser(id: string): Promise<User | null> {
   await ensureMigrated()
   const rows = await q<UserRow>('get_user', { id })
-  return rows[0] ? rowToUser(rows[0]) : null
+  if (!rows[0]) return null
+  const user = rowToUser(rows[0])
+  // This query exposes only the mower's explicit opt-in address; it never
+  // falls back to the masked account email returned by get_user.
+  if (user.role === 'mower') user.publicContactEmail = await getPublicMowerContact(id)
+  return user
 }
 
 export interface UserSearch {
@@ -67,6 +74,7 @@ export async function listUsers(filter: UserSearch = {}): Promise<User[]> {
 
 export interface UserCreate {
   id: string
+  publicContactEmail?: string | null
   email?: string | null
   name?: string | null
   photoUrl?: string | null
@@ -119,6 +127,7 @@ export async function updateUser(_id: string, patch: UserPatch): Promise<void> {
     params[col] = val
   }
   if ('email' in patch) set('set_email', 'email', patch.email ?? null)
+  if ('publicContactEmail' in patch) set('set_public_contact_email', 'public_contact_email', patch.publicContactEmail ?? null)
   if ('name' in patch) set('set_name', 'name', patch.name ?? null)
   if ('photoUrl' in patch) set('set_photo_url', 'photo_url', patch.photoUrl ?? null)
   if ('suburb' in patch) set('set_suburb', 'suburb', patch.suburb ?? null)

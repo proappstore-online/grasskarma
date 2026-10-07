@@ -33,6 +33,9 @@ export interface MowerProfile {
 
 export interface User {
   id: string
+  // Mower-only, explicit opt-in address used by the hire directory. This is
+  // never inferred from the private account email.
+  publicContactEmail: string | null
   email: string | null
   name: string | null
   photoUrl: string | null

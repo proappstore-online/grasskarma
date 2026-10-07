@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getUser } from '../../lib/users'
 import { listReviews, averageRating } from '../../lib/reviews'
+import { mowerContactHref } from '../../lib/mowerContacts'
 import type { User, MowerReview } from '../../models'
 
 export default function MowerPublicProfile() {
@@ -78,6 +79,14 @@ export default function MowerPublicProfile() {
             )}
             {mower.mowerProfile?.bio && (
               <p className="mt-3 text-sm leading-relaxed">{mower.mowerProfile.bio}</p>
+            )}
+            {mower.publicContactEmail && (
+              <a
+                href={mowerContactHref(mower.publicContactEmail)}
+                className="mt-4 inline-block rounded-md bg-[var(--accent)] px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+              >
+                Email mower
+              </a>
             )}
           </div>
         </div>

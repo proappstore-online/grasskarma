@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { listUsers } from '../../lib/users'
+import { getPublicMowerContact, mowerContactHref } from '../../lib/mowerContacts'
 import type { User } from '../../models'
 
 // Browse mowers, see rates / service radius, send an email contact.
@@ -11,6 +12,23 @@ export default function ShareHirePage() {
   const [mowers, setMowers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [contactError, setContactError] = useState<string | null>(null)
+  const [contacting, setContacting] = useState<string | null>(null)
+
+  const handleContact = async (mowerId: string) => {
+    setContacting(mowerId)
+    setContactError(null)
+    try {
+      const email = await getPublicMowerContact(mowerId)
+      if (!email) throw new Error('This mower has not provided a public contact email.')
+      window.location.assign(mowerContactHref(email))
+    } catch (err) {
+      console.error(err)
+      setContactError(err instanceof Error ? err.message : 'Could not open mower contact details.')
+    } finally {
+      setContacting(null)
+    }
+  }
 
   useEffect(() => {
     let alive = true
@@ -42,6 +60,8 @@ export default function ShareHirePage() {
           Browse mowers, see their rate and service area, and reach out directly.
         </p>
       </header>
+
+      {contactError && <p className="text-sm text-[var(--error)]">{contactError}</p>}
 
       {mowers.length === 0 ? (
         <p className="text-sm text-[var(--muted)]">No mowers signed up yet.</p>
@@ -79,14 +99,13 @@ export default function ShareHirePage() {
               </dl>
 
               <div className="mt-4 flex gap-2">
-                {m.email && (
-                  <a
-                    href={`mailto:${m.email}`}
-                    className="flex-1 rounded-md bg-[var(--accent)] px-3 py-1.5 text-center text-sm font-medium text-white hover:opacity-90"
-                  >
-                    Email
-                  </a>
-                )}
+                <button
+                  onClick={() => void handleContact(m.id)}
+                  disabled={contacting === m.id}
+                  className="flex-1 rounded-md bg-[var(--accent)] px-3 py-1.5 text-center text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+                >
+                  {contacting === m.id ? 'Opening…' : 'Email'}
+                </button>
                 <Link
                   to={user?.role === 'mower' ? `/mower/${m.id}` : `/app/user/${m.id}`}
                   className="flex-1 rounded-md border border-[var(--accent)] px-3 py-1.5 text-center text-sm text-[var(--accent)] hover:bg-[var(--accent-soft)]"

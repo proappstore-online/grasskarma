@@ -15,7 +15,7 @@ before writing or changing anything.
 
 Schema lives in `web/src/lib/db.ts`. Row types alongside; domain types in `web/src/models/`.
 
-- `users(id PK, email, name, photo_url, role, suburb, postcode, state, country, lat, lng, client_profile JSON, mower_profile JSON, street_group_id, created_at, updated_at)` — `role IN ('client','mower','admin')`. `client_profile` and `mower_profile` are stringified domain objects (`ClientProfile` / `MowerProfile` in `models/user.ts`).
+- `users(id PK, email, public_contact_email, name, photo_url, role, suburb, postcode, state, country, lat, lng, client_profile JSON, mower_profile JSON, street_group_id, created_at, updated_at)` — `role IN ('client','mower','admin')`. `public_contact_email` is a mower's explicit opt-in directory address; it is separate from the private account email. `client_profile` and `mower_profile` are stringified domain objects (`ClientProfile` / `MowerProfile` in `models/user.ts`).
 - `street_groups(id PK, name, street_name, suburb, postcode, state, country, center_lat, center_lng, admin_ids JSON, member_ids JSON, assigned_mower_id, status, created_at, updated_at)` — `status IN ('forming','active','paused','archived')`. `admin_ids` / `member_ids` are JSON arrays of `user.id`.
 - `street_group_interests(id PK, group_id, user_id, message, created_at)` — `UNIQUE(group_id, user_id)`. Client says "I want to join".
 - `mower_interests(id PK, group_id, mower_id, message, created_at, updated_at)` — `UNIQUE(mower_id, group_id)`. Mower says "I'd mow this street".

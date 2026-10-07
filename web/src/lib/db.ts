@@ -214,6 +214,20 @@ export const MIGRATIONS = [
       CREATE INDEX idx_schedules_mower ON schedules(mower_id, due_date);
     `,
   },
+  {
+    name: '0004_public_mower_contact',
+    // A mower must deliberately opt in before a client can ask for a contact
+    // address. This is distinct from the private account email field.
+    sql: `
+      ALTER TABLE users ADD COLUMN public_contact_email TEXT CHECK (
+        public_contact_email IS NULL OR (
+          length(trim(public_contact_email)) <= 254
+          AND trim(public_contact_email) NOT LIKE '% %'
+          AND trim(public_contact_email) GLOB '*@*.*'
+        )
+      );
+    `,
+  },
 ]
 
 let migrated = false
@@ -244,6 +258,7 @@ export type ScheduleStatus = 'planned' | 'done' | 'skipped'
 export interface UserRow {
   id: string
   email: string | null
+  public_contact_email: string | null
   name: string | null
   photo_url: string | null
   role: Role | null

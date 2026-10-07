@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { updateUser } from '../../lib/users'
+import { normalizePublicContactEmail } from '../../lib/mowerContacts'
 
 export default function MowerSetupPage() {
   const { user, refresh } = useAuth()
@@ -11,6 +12,7 @@ export default function MowerSetupPage() {
   const [serviceRadiusKm, setRadius] = useState('5')
   const [ratePerM2, setRate] = useState('')
   const [bio, setBio] = useState('')
+  const [publicContactEmail, setPublicContactEmail] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -21,6 +23,7 @@ export default function MowerSetupPage() {
       setRadius(String(user.mowerProfile.serviceRadiusKm ?? 5))
       setRate(user.mowerProfile.ratePerM2 ? String(user.mowerProfile.ratePerM2) : '')
       setBio(user.mowerProfile.bio ?? '')
+      setPublicContactEmail(user.publicContactEmail ?? '')
     }
   }, [user])
 
@@ -41,6 +44,7 @@ export default function MowerSetupPage() {
       await updateUser(user.id, {
         suburb: suburb.trim(),
         postcode: postcode.trim(),
+        publicContactEmail: normalizePublicContactEmail(publicContactEmail),
         mowerProfile: {
           suburb: suburb.trim(),
           postcode: postcode.trim(),
@@ -71,6 +75,15 @@ export default function MowerSetupPage() {
         <Field label="Postcode" value={postcode} onChange={setPostcode} inputMode="numeric" maxLength={4} />
         <Field label="Service radius (km)" value={serviceRadiusKm} onChange={setRadius} type="number" />
         <Field label="Rate per m² ($)" value={ratePerM2} onChange={setRate} type="number" />
+        <Field
+          label="Public contact email"
+          value={publicContactEmail}
+          onChange={setPublicContactEmail}
+          type="email"
+        />
+        <p className="-mt-2 text-xs text-[var(--muted)]">
+          Optional. This is shown only when a client chooses to email you from the hire directory; your account email stays private.
+        </p>
         <div>
           <label className="mb-1 block text-sm font-medium">Bio</label>
           <textarea

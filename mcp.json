@@ -4,7 +4,7 @@
       "name": "get_user",
       "description": "Fetch one user row (public neighbourhood profile) by id",
       "operation": "query",
-      "sql": "SELECT u.id, u.name, u.photo_url, u.role, u.suburb, u.postcode, u.state, u.country, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.email END AS email, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.lat END AS lat, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.lng END AS lng, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.client_profile WHEN json_valid(u.client_profile) THEN json_remove(u.client_profile, '$.addressNumber', '$.natureStripPhotos') END AS client_profile, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.mower_profile WHEN json_valid(u.mower_profile) THEN json_remove(u.mower_profile, '$.addressNumber', '$.homeStreetName') END AS mower_profile, u.street_group_id, u.created_at, u.updated_at FROM users u WHERE u.id = :id AND (u.id = :__user_id OR u.role = 'mower' OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin') OR EXISTS (SELECT 1 FROM street_groups g WHERE EXISTS (SELECT 1 FROM json_each(g.member_ids) mm WHERE mm.value = u.id) AND (EXISTS (SELECT 1 FROM json_each(g.member_ids) c WHERE c.value = :__user_id) OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) c WHERE c.value = :__user_id))))",
+      "sql": "SELECT u.id, NULL AS public_contact_email, u.name, u.photo_url, u.role, u.suburb, u.postcode, u.state, u.country, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.email END AS email, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.lat END AS lat, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.lng END AS lng, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.client_profile WHEN json_valid(u.client_profile) THEN json_remove(u.client_profile, '$.addressNumber', '$.natureStripPhotos') END AS client_profile, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.mower_profile WHEN json_valid(u.mower_profile) THEN json_remove(u.mower_profile, '$.addressNumber', '$.homeStreetName') END AS mower_profile, u.street_group_id, u.created_at, u.updated_at FROM users u WHERE u.id = :id AND (u.id = :__user_id OR u.role = 'mower' OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin') OR EXISTS (SELECT 1 FROM street_groups g WHERE EXISTS (SELECT 1 FROM json_each(g.member_ids) mm WHERE mm.value = u.id) AND (EXISTS (SELECT 1 FROM json_each(g.member_ids) c WHERE c.value = :__user_id) OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) c WHERE c.value = :__user_id))))",
       "params": {
         "id": {
           "type": "string"
@@ -21,7 +21,7 @@
       "name": "list_users",
       "description": "List users filtered by role/suburb/postcode (neighbourhood directory)",
       "operation": "query",
-      "sql": "SELECT u.id, u.name, u.photo_url, u.role, u.suburb, u.postcode, u.state, u.country, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.email END AS email, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.lat END AS lat, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.lng END AS lng, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.client_profile WHEN json_valid(u.client_profile) THEN json_remove(u.client_profile, '$.addressNumber', '$.natureStripPhotos') END AS client_profile, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.mower_profile WHEN json_valid(u.mower_profile) THEN json_remove(u.mower_profile, '$.addressNumber', '$.homeStreetName') END AS mower_profile, u.street_group_id, u.created_at, u.updated_at FROM users u WHERE (:role IS NULL OR u.role = :role) AND (:suburb IS NULL OR u.suburb = :suburb) AND (:postcode IS NULL OR u.postcode = :postcode) AND (u.id = :__user_id OR u.role = 'mower' OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) ORDER BY u.updated_at DESC LIMIT :limit",
+      "sql": "SELECT u.id, NULL AS public_contact_email, u.name, u.photo_url, u.role, u.suburb, u.postcode, u.state, u.country, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.email END AS email, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.lat END AS lat, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.lng END AS lng, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.client_profile WHEN json_valid(u.client_profile) THEN json_remove(u.client_profile, '$.addressNumber', '$.natureStripPhotos') END AS client_profile, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.mower_profile WHEN json_valid(u.mower_profile) THEN json_remove(u.mower_profile, '$.addressNumber', '$.homeStreetName') END AS mower_profile, u.street_group_id, u.created_at, u.updated_at FROM users u WHERE (:role IS NULL OR u.role = :role) AND (:suburb IS NULL OR u.suburb = :suburb) AND (:postcode IS NULL OR u.postcode = :postcode) AND (u.id = :__user_id OR u.role = 'mower' OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) ORDER BY u.updated_at DESC LIMIT :limit",
       "params": {
         "role": {
           "type": "string",
@@ -46,6 +46,21 @@
       "auth": {
         "caller_unscoped": {
           "reason": "public mower hire directory (Share/hire page); non-admins see only mower rows plus themself; email, lat/lng, house number and home street masked to self/admin"
+        }
+      }
+    },
+    {
+      "name": "get_public_mower_contact",
+      "description": "Resolve a mower's explicitly published hire-enquiry email address",
+      "operation": "query",
+      "sql": "SELECT public_contact_email FROM users WHERE id = :mower_id AND role = 'mower' AND public_contact_email IS NOT NULL AND trim(public_contact_email) <> ''",
+      "params": {
+        "mower_id": { "type": "string" }
+      },
+      "requires_auth": true,
+      "auth": {
+        "caller_unscoped": {
+          "reason": "A mower deliberately opts in to publish this address for hire enquiries; private account email remains masked."
         }
       }
     },
@@ -109,10 +124,12 @@
       "name": "update_me",
       "description": "Update the caller's own profile fields; role changes are restricted to admin_set_role and a group pointer must match verified membership",
       "operation": "execute",
-      "sql": "UPDATE users SET email = CASE WHEN :set_email = 1 THEN :email ELSE email END, name = CASE WHEN :set_name = 1 THEN :name ELSE name END, photo_url = CASE WHEN :set_photo_url = 1 THEN :photo_url ELSE photo_url END, suburb = CASE WHEN :set_suburb = 1 THEN :suburb ELSE suburb END, postcode = CASE WHEN :set_postcode = 1 THEN :postcode ELSE postcode END, state = CASE WHEN :set_state = 1 THEN :state ELSE state END, country = CASE WHEN :set_country = 1 THEN :country ELSE country END, lat = CASE WHEN :set_lat = 1 THEN :lat ELSE lat END, lng = CASE WHEN :set_lng = 1 THEN :lng ELSE lng END, client_profile = CASE WHEN :set_client_profile = 1 THEN :client_profile ELSE client_profile END, mower_profile = CASE WHEN :set_mower_profile = 1 THEN :mower_profile ELSE mower_profile END, street_group_id = CASE WHEN :set_street_group_id = 1 THEN :street_group_id ELSE street_group_id END, updated_at = :__now WHERE id = :__user_id AND (:set_street_group_id = 0 OR :street_group_id IS NULL OR EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :street_group_id AND EXISTS (SELECT 1 FROM json_each(g.member_ids) WHERE value = :__user_id)))",
+      "sql": "UPDATE users SET email = CASE WHEN :set_email = 1 THEN :email ELSE email END, public_contact_email = CASE WHEN :set_public_contact_email = 1 THEN NULLIF(trim(:public_contact_email), '') ELSE public_contact_email END, name = CASE WHEN :set_name = 1 THEN :name ELSE name END, photo_url = CASE WHEN :set_photo_url = 1 THEN :photo_url ELSE photo_url END, suburb = CASE WHEN :set_suburb = 1 THEN :suburb ELSE suburb END, postcode = CASE WHEN :set_postcode = 1 THEN :postcode ELSE postcode END, state = CASE WHEN :set_state = 1 THEN :state ELSE state END, country = CASE WHEN :set_country = 1 THEN :country ELSE country END, lat = CASE WHEN :set_lat = 1 THEN :lat ELSE lat END, lng = CASE WHEN :set_lng = 1 THEN :lng ELSE lng END, client_profile = CASE WHEN :set_client_profile = 1 THEN :client_profile ELSE client_profile END, mower_profile = CASE WHEN :set_mower_profile = 1 THEN :mower_profile ELSE mower_profile END, street_group_id = CASE WHEN :set_street_group_id = 1 THEN :street_group_id ELSE street_group_id END, updated_at = :__now WHERE id = :__user_id AND (:set_public_contact_email = 0 OR role = 'mower') AND (:set_street_group_id = 0 OR :street_group_id IS NULL OR EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :street_group_id AND EXISTS (SELECT 1 FROM json_each(g.member_ids) WHERE value = :__user_id)))",
       "params": {
         "set_email": { "type": "integer", "default": 0, "optional": true },
         "email": { "type": "string", "optional": true },
+        "set_public_contact_email": { "type": "integer", "default": 0, "optional": true },
+        "public_contact_email": { "type": "string", "optional": true },
         "set_name": { "type": "integer", "default": 0, "optional": true },
         "name": { "type": "string", "optional": true },
         "set_photo_url": { "type": "integer", "default": 0, "optional": true },
