@@ -5,17 +5,16 @@ import { useAuth } from '../../contexts/AuthContext'
 import { getUser, updateUser } from '../../lib/users'
 import { replaceAvatar } from '../../lib/photos'
 import { createMowerProfileDraft, serializeMowerProfileDraft } from '../../lib/mowerProfileForm'
-import type { User, ClientProfile } from '../../models'
+import { useAsyncResource } from '../../hooks/useAsyncResource'
+import type { ClientProfile } from '../../models'
 
 export default function UserProfileEditPage() {
   const { userId } = useParams<{ userId: string }>()
   const { user: me, refresh } = useAuth()
   const navigate = useNavigate()
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
   // Editable fields
@@ -27,52 +26,33 @@ export default function UserProfileEditPage() {
   const [clientProfile, setClientProfile] = useState<ClientProfile>({})
   const [mowerProfileDraft, setMowerProfileDraft] = useState(() => createMowerProfileDraft(null, null, 'edit'))
 
+  const accessError = !userId
+    ? 'User ID is missing.'
+    : me && me.id !== userId
+      ? 'You can only edit your own profile.'
+      : null
+  const { data: user, loading, error: loadError } = useAsyncResource(
+    () => getUser(userId!),
+    [userId],
+    { enabled: !accessError && Boolean(userId) },
+  )
+
   useEffect(() => {
-    if (!userId) {
-      setError('User ID is missing.')
-      setLoading(false)
-      return
-    }
-    if (me && me.id !== userId) {
-      setError('You can only edit your own profile.')
-      setLoading(false)
-      return
-    }
-    let alive = true
-    const run = async () => {
-      try {
-        const u = await getUser(userId)
-        if (!alive) return
-        if (!u) {
-          setError('User not found.')
-          return
-        }
-        setUser(u)
-        setName(u.name ?? '')
-        setSuburb(u.suburb ?? '')
-        setPostcode(u.postcode ?? '')
-        setStateField(u.state ?? '')
-        setPhotoUrl(u.photoUrl)
-        setClientProfile(u.clientProfile ?? {})
-        setMowerProfileDraft(createMowerProfileDraft(u.mowerProfile, u.publicContactEmail, 'edit'))
-      } catch (err) {
-        console.error(err)
-        if (alive) setError('Failed to load profile.')
-      } finally {
-        if (alive) setLoading(false)
-      }
-    }
-    void run()
-    return () => {
-      alive = false
-    }
-  }, [userId, me])
+    if (!user) return
+    setName(user.name ?? '')
+    setSuburb(user.suburb ?? '')
+    setPostcode(user.postcode ?? '')
+    setStateField(user.state ?? '')
+    setPhotoUrl(user.photoUrl)
+    setClientProfile(user.clientProfile ?? {})
+    setMowerProfileDraft(createMowerProfileDraft(user.mowerProfile, user.publicContactEmail, 'edit'))
+  }, [user])
 
   const handleAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !userId) return
     setUploading(true)
-    setError(null)
+    setSaveError(null)
     try {
       // replaceAvatar persists the new URL before it queues the previous
       // object for deletion, so a failed save can never remove the live image.
@@ -80,7 +60,7 @@ export default function UserProfileEditPage() {
       setPhotoUrl(url)
     } catch (err) {
       console.error(err)
-      setError('Avatar upload failed.')
+      setSaveError('Avatar upload failed.')
     } finally {
       setUploading(false)
     }
@@ -89,7 +69,7 @@ export default function UserProfileEditPage() {
   const handleSave = async () => {
     if (!user) return
     setSaving(true)
-    setError(null)
+    setSaveError(null)
     setMessage(null)
     try {
       const mowerProfile = user.role === 'mower' ? serializeMowerProfileDraft(mowerProfileDraft) : null
@@ -109,14 +89,15 @@ export default function UserProfileEditPage() {
       setTimeout(() => navigate(`${base}/user/${user.id}`), 800)
     } catch (err) {
       console.error(err)
-      setError('Failed to save.')
+      setSaveError('Failed to save.')
     } finally {
       setSaving(false)
     }
   }
 
   if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (error && !user) return <p className="text-sm text-[var(--error)]">{error}</p>
+  if (accessError || loadError) return <p className="text-sm text-[var(--error)]">{accessError ?? 'Failed to load profile.'}</p>
+  if (!loading && !user) return <p className="text-sm text-[var(--error)]">User not found.</p>
   if (!user) return null
 
   return (
@@ -186,7 +167,7 @@ export default function UserProfileEditPage() {
         </div>
       )}
 
-      {error && <p className="text-sm text-[var(--error)]">{error}</p>}
+      {saveError && <p className="text-sm text-[var(--error)]">{saveError}</p>}
       {message && <p className="text-sm text-[var(--success)]">{message}</p>}
 
       <div className="flex justify-between">

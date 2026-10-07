@@ -1,48 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { listGroups } from '../../lib/streetGroups'
 import { listInterestsForMower, createMowerInterest } from '../../lib/mowerInterests'
-import type { StreetGroup } from '../../models'
+import { useAsyncResource } from '../../hooks/useAsyncResource'
 
 export default function MowerStreetsPage() {
   const { user } = useAuth()
-  const [groups, setGroups] = useState<StreetGroup[]>([])
-  const [interestedIds, setInterestedIds] = useState<Set<string>>(new Set())
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!user) return
-    let alive = true
-    const run = async () => {
-      try {
-        const [allGroups, mine] = await Promise.all([
-          listGroups({ status: 'forming' }),
-          listInterestsForMower(),
-        ])
-        if (!alive) return
-        setGroups(allGroups)
-        setInterestedIds(new Set(mine.map((i) => i.groupId)))
-      } catch (err) {
-        console.error(err)
-        if (alive) setError('Failed to load streets.')
-      } finally {
-        if (alive) setLoading(false)
-      }
-    }
-    void run()
-    return () => {
-      alive = false
-    }
-  }, [user])
+  const { data, loading, error, updateData } = useAsyncResource(async () => {
+    const [groups, interests] = await Promise.all([listGroups({ status: 'forming' }), listInterestsForMower()])
+    return { groups, interestedIds: new Set(interests.map((interest) => interest.groupId)) }
+  }, [user?.id], { enabled: Boolean(user) })
+  const groups = data?.groups ?? []
+  const interestedIds = data?.interestedIds ?? new Set<string>()
 
   const handleExpressInterest = async (groupId: string) => {
     if (!user) return
     setSavingId(groupId)
     try {
       await createMowerInterest(groupId)
-      setInterestedIds((prev) => new Set([...prev, groupId]))
+      updateData((current) => current && { ...current, interestedIds: new Set([...current.interestedIds, groupId]) })
     } catch (err) {
       console.error(err)
     } finally {
@@ -51,7 +28,7 @@ export default function MowerStreetsPage() {
   }
 
   if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (error) return <p className="text-sm text-[var(--error)]">{error}</p>
+  if (error) return <p className="text-sm text-[var(--error)]">Failed to load streets.</p>
 
   return (
     <section className="space-y-6">

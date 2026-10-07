@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { listInterestsForGroup, voteTally, castVote, listVotes } from '../../lib/mowerInterests'
 import { getGroup, updateGroup } from '../../lib/streetGroups'
 import { getUser } from '../../lib/users'
+import { useAsyncResource } from '../../hooks/useAsyncResource'
 import type { MowerInterest, User } from '../../models'
 
 interface Card {
@@ -15,51 +16,25 @@ interface Card {
 
 export default function MowersPage() {
   const { user } = useAuth()
-  const [cards, setCards] = useState<Card[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [voting, setVoting] = useState<string | null>(null)
-  const [assignedMowerId, setAssignedMowerId] = useState<string | null>(null)
-  const [isAdmin, setIsAdmin] = useState(false)
-
-  useEffect(() => {
-    if (!user?.streetGroupId) {
-      setLoading(false)
-      return
+  const [actionError, setActionError] = useState<string | null>(null)
+  const { data, loading, error: loadError, updateData } = useAsyncResource(async () => {
+    const [interests, group] = await Promise.all([listInterestsForGroup(user!.streetGroupId!), getGroup(user!.streetGroupId!)])
+    const cards = await Promise.all(interests.map(async (interest) => {
+      const [mower, tally, votes] = await Promise.all([getUser(interest.mowerId), voteTally(interest.id), listVotes(interest.id)])
+      if (!mower) return null
+      const myVote = votes.find((vote) => vote.voterId === user!.id)?.vote ?? null
+      return { interest, mower, tally, myVote } as Card
+    }))
+    return {
+      cards: cards.filter((card): card is Card => !!card),
+      assignedMowerId: group?.assignedMowerId ?? null,
+      isAdmin: Boolean(group?.adminIds.includes(user!.id)),
     }
-    let alive = true
-    const run = async () => {
-      try {
-        const [interests, group] = await Promise.all([listInterestsForGroup(user.streetGroupId!), getGroup(user.streetGroupId!)])
-        const enriched = await Promise.all(
-          interests.map(async (i) => {
-            const [mower, tally, votes] = await Promise.all([
-              getUser(i.mowerId),
-              voteTally(i.id),
-              listVotes(i.id),
-            ])
-            if (!mower) return null
-            const my = votes.find((v) => v.voterId === user.id)
-            return { interest: i, mower, tally, myVote: my?.vote ?? null } as Card
-          }),
-        )
-        if (alive) {
-          setCards(enriched.filter((c): c is Card => !!c))
-          setAssignedMowerId(group?.assignedMowerId ?? null)
-          setIsAdmin(!!group?.adminIds.includes(user.id))
-        }
-      } catch (err) {
-        console.error(err)
-        if (alive) setError('Failed to load mowers.')
-      } finally {
-        if (alive) setLoading(false)
-      }
-    }
-    void run()
-    return () => {
-      alive = false
-    }
-  }, [user])
+  }, [user?.id, user?.streetGroupId], { enabled: Boolean(user?.streetGroupId) })
+  const cards = data?.cards ?? []
+  const assignedMowerId = data?.assignedMowerId ?? null
+  const isAdmin = data?.isAdmin ?? false
 
   const handleVote = async (interestId: string, vote: 1 | -1) => {
     if (!user) return
@@ -67,7 +42,10 @@ export default function MowersPage() {
     try {
       await castVote(interestId, vote)
       const tally = await voteTally(interestId)
-      setCards((prev) => prev.map((c) => (c.interest.id === interestId ? { ...c, myVote: vote, tally } : c)))
+      updateData((current) => current && {
+        ...current,
+        cards: current.cards.map((card) => card.interest.id === interestId ? { ...card, myVote: vote, tally } : card),
+      })
     } catch (err) {
       console.error(err)
     } finally {
@@ -78,25 +56,31 @@ export default function MowersPage() {
   const handleAssign = async (mowerId: string) => {
     if (!user?.streetGroupId) return
     setVoting(`assign:${mowerId}`)
-    setError(null)
+    setActionError(null)
     try {
       await updateGroup(user.streetGroupId, { assignedMowerId: mowerId })
       const group = await getGroup(user.streetGroupId)
-      setAssignedMowerId(group?.assignedMowerId ?? null)
-      setIsAdmin(!!group?.adminIds.includes(user.id))
+      updateData((current) => current && {
+        ...current,
+        assignedMowerId: group?.assignedMowerId ?? null,
+        isAdmin: Boolean(group?.adminIds.includes(user.id)),
+      })
     } catch (err) {
       console.error(err)
       const group = await getGroup(user.streetGroupId).catch(() => null)
-      setAssignedMowerId(group?.assignedMowerId ?? null)
-      setIsAdmin(!!group?.adminIds.includes(user.id))
-      setError('Could not assign that mower.')
+      updateData((current) => current && {
+        ...current,
+        assignedMowerId: group?.assignedMowerId ?? null,
+        isAdmin: Boolean(group?.adminIds.includes(user.id)),
+      })
+      setActionError('Could not assign that mower.')
     } finally {
       setVoting(null)
     }
   }
 
   if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (error) return <p className="text-sm text-[var(--error)]">{error}</p>
+  if (loadError || actionError) return <p className="text-sm text-[var(--error)]">{actionError ?? 'Failed to load mowers.'}</p>
   if (!user?.streetGroupId) {
     return (
       <section className="space-y-3">

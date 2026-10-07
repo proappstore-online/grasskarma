@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useAsyncResource } from '../../hooks/useAsyncResource'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { getUser } from '../../lib/users'
 import { averageRating } from '../../lib/reviews'
-import type { User } from '../../models'
 
 // Authenticated user-profile view (both client and mower share this).
 // Public mower view at /mower/:mowerId is a separate page.
@@ -11,42 +10,17 @@ export default function UserProfilePage() {
   const { userId } = useParams<{ userId: string }>()
   const { user: me } = useAuth()
   const navigate = useNavigate()
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [rating, setRating] = useState<{ average: number; count: number } | null>(null)
-
-  useEffect(() => {
-    if (!userId) {
-      setError('User ID is missing.')
-      setLoading(false)
-      return
-    }
-    let alive = true
-    const run = async () => {
-      try {
-        const u = await getUser(userId)
-        if (!alive) return
-        setUser(u)
-        if (u?.role === 'mower') {
-          const avg = await averageRating(u.id)
-          if (alive) setRating(avg)
-        }
-      } catch (err) {
-        console.error(err)
-        if (alive) setError('Failed to load profile.')
-      } finally {
-        if (alive) setLoading(false)
-      }
-    }
-    void run()
-    return () => {
-      alive = false
-    }
-  }, [userId])
+  const { data, loading, error } = useAsyncResource(async () => {
+    const user = await getUser(userId!)
+    const rating = user?.role === 'mower' ? await averageRating(user.id) : null
+    return { user, rating }
+  }, [userId], { enabled: Boolean(userId) })
+  const user = data?.user ?? null
+  const rating = data?.rating ?? null
 
   if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (error) return <p className="text-sm text-[var(--error)]">{error}</p>
+  if (!userId) return <p className="text-sm text-[var(--error)]">User ID is missing.</p>
+  if (error) return <p className="text-sm text-[var(--error)]">Failed to load profile.</p>
   if (!user) return <p className="text-sm text-[var(--muted)]">User not found.</p>
 
   const isMe = me?.id === user.id

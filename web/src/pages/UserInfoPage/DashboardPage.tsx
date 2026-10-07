@@ -1,72 +1,45 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { getGroup } from '../../lib/streetGroups'
 import { getUser } from '../../lib/users'
 import { listSchedules } from '../../lib/schedules'
 import { averageRating } from '../../lib/reviews'
-import type { StreetGroup, Schedule, User } from '../../models'
+import { useAsyncResource } from '../../hooks/useAsyncResource'
+import type { User } from '../../models'
 
 export default function DashboardPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [group, setGroup] = useState<StreetGroup | null>(null)
-  const [members, setMembers] = useState<User[]>([])
-  const [schedules, setSchedules] = useState<Schedule[]>([])
-  const [mower, setMower] = useState<User | null>(null)
-  const [mowerRating, setMowerRating] = useState<{ average: number; count: number } | null>(null)
-
   useEffect(() => {
-    if (!user) return
-    if (!user.streetGroupId) {
+    if (user && !user.streetGroupId) {
       navigate('/app/setup', { replace: true })
-      return
-    }
-    let alive = true
-    const run = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const g = await getGroup(user.streetGroupId!)
-        if (!alive) return
-        setGroup(g)
-        if (!g) {
-          setLoading(false)
-          return
-        }
-        const [ms, ss, mw] = await Promise.all([
-          Promise.all(g.memberIds.map((id) => getUser(id))),
-          listSchedules(g.id),
-          g.assignedMowerId ? getUser(g.assignedMowerId) : Promise.resolve(null),
-        ])
-        if (!alive) return
-        setMembers(ms.filter((m): m is User => !!m))
-        setSchedules(ss)
-        setMower(mw)
-        if (mw) {
-          const avg = await averageRating(mw.id)
-          if (alive) setMowerRating(avg)
-        }
-      } catch (err) {
-        console.error(err)
-        if (alive) setError('Failed to load dashboard.')
-      } finally {
-        if (alive) setLoading(false)
-      }
-    }
-    void run()
-    return () => {
-      alive = false
     }
   }, [user, navigate])
+
+  const { data, loading, error } = useAsyncResource(async () => {
+    const group = await getGroup(user!.streetGroupId!)
+    if (!group) return { group: null, members: [], schedules: [], mower: null, mowerRating: null }
+    const [members, schedules, mower] = await Promise.all([
+      Promise.all(group.memberIds.map((id) => getUser(id))),
+      listSchedules(group.id),
+      group.assignedMowerId ? getUser(group.assignedMowerId) : Promise.resolve(null),
+    ])
+    const mowerRating = mower ? await averageRating(mower.id) : null
+    return { group, members: members.filter((member): member is User => !!member), schedules, mower, mowerRating }
+  }, [user?.streetGroupId], { enabled: Boolean(user?.streetGroupId) })
+
+  const group = data?.group ?? null
+  const members = data?.members ?? []
+  const schedules = data?.schedules ?? []
+  const mower = data?.mower ?? null
+  const mowerRating = data?.mowerRating ?? null
 
   if (loading) {
     return <p className="text-sm text-[var(--muted)]">Loading…</p>
   }
   if (error) {
-    return <p className="text-sm text-[var(--error)]">{error}</p>
+    return <p className="text-sm text-[var(--error)]">Failed to load dashboard.</p>
   }
   if (!group) {
     return <p className="text-sm text-[var(--muted)]">Group not found.</p>

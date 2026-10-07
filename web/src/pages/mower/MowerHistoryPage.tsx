@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { listHistory } from '../../lib/history'
+import { useAsyncResource } from '../../hooks/useAsyncResource'
 import type { HistoryRecord } from '../../models'
 
 const fmtMoney = (n: number | null) =>
@@ -9,28 +10,16 @@ const fmtDur = (m: number | null) => (m == null ? '—' : `${Math.floor(m / 60)}
 
 export default function MowerHistoryPage() {
   const { user } = useAuth()
-  const [items, setItems] = useState<HistoryRecord[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<HistoryRecord | null>(null)
-
-  useEffect(() => {
-    if (!user) return
-    let alive = true
-    listHistory(user.id)
-      .then((list) => alive && setItems(list))
-      .catch((err) => {
-        console.error(err)
-        if (alive) setError('Failed to load history.')
-      })
-      .finally(() => alive && setLoading(false))
-    return () => {
-      alive = false
-    }
-  }, [user])
+  const { data, loading, error } = useAsyncResource(
+    () => listHistory(user!.id),
+    [user?.id],
+    { enabled: Boolean(user) },
+  )
+  const items = data ?? []
 
   if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (error) return <p className="text-sm text-[var(--error)]">{error}</p>
+  if (error) return <p className="text-sm text-[var(--error)]">Failed to load history.</p>
 
   return (
     <section className="space-y-6">

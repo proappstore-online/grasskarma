@@ -1,19 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { listUsers } from '../../lib/users'
 import { getPublicMowerContact, mowerContactHref } from '../../lib/mowerContacts'
-import type { User } from '../../models'
+import { useAsyncResource } from '../../hooks/useAsyncResource'
 
 // Browse mowers, see rates / service radius, send an email contact.
 // All payment/booking flow is stripped per port plan §11 (Stripe-out).
 export default function ShareHirePage() {
   const { user } = useAuth()
-  const [mowers, setMowers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [contactError, setContactError] = useState<string | null>(null)
   const [contacting, setContacting] = useState<string | null>(null)
+  const { data, loading, error } = useAsyncResource(
+    () => listUsers({ role: 'mower' }),
+    [],
+  )
+  const mowers = data ?? []
 
   const handleContact = async (mowerId: string) => {
     setContacting(mowerId)
@@ -30,27 +32,8 @@ export default function ShareHirePage() {
     }
   }
 
-  useEffect(() => {
-    let alive = true
-    const run = async () => {
-      try {
-        const list = await listUsers({ role: 'mower' })
-        if (alive) setMowers(list)
-      } catch (err) {
-        console.error(err)
-        if (alive) setError('Failed to load mowers.')
-      } finally {
-        if (alive) setLoading(false)
-      }
-    }
-    void run()
-    return () => {
-      alive = false
-    }
-  }, [])
-
   if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (error) return <p className="text-sm text-[var(--error)]">{error}</p>
+  if (error) return <p className="text-sm text-[var(--error)]">Failed to load mowers.</p>
 
   return (
     <section className="space-y-6">

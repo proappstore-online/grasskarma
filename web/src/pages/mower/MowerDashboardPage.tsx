@@ -5,7 +5,8 @@ import { listGroups } from '../../lib/streetGroups'
 import { completeSchedule, listSchedulesForMower } from '../../lib/schedules'
 import { listHistory } from '../../lib/history'
 import { averageRating } from '../../lib/reviews'
-import type { StreetGroup, Schedule, HistoryRecord } from '../../models'
+import { useAsyncResource } from '../../hooks/useAsyncResource'
+import type { Schedule } from '../../models'
 
 function isProfileComplete(m: { suburb?: string; postcode?: string; serviceRadiusKm?: number } | null | undefined) {
   return !!(m && m.suburb && m.postcode && typeof m.serviceRadiusKm === 'number' && m.serviceRadiusKm > 0)
@@ -14,47 +15,28 @@ function isProfileComplete(m: { suburb?: string; postcode?: string; serviceRadiu
 export default function MowerDashboardPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [assigned, setAssigned] = useState<StreetGroup[]>([])
-  const [upcoming, setUpcoming] = useState<Schedule[]>([])
-  const [history, setHistory] = useState<HistoryRecord[]>([])
-  const [rating, setRating] = useState<{ average: number; count: number } | null>(null)
   const [completing, setCompleting] = useState<string | null>(null)
   const [completionError, setCompletionError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!user) return
-    if (!isProfileComplete(user.mowerProfile)) {
+    if (user && !isProfileComplete(user.mowerProfile)) {
       navigate('/mower/setup', { replace: true })
-      return
-    }
-    let alive = true
-    const run = async () => {
-      try {
-        const [groups, schedules, hist, avg] = await Promise.all([
-          listGroups({ mowerId: user.id }),
-          listSchedulesForMower(20),
-          listHistory(user.id, 10),
-          averageRating(user.id),
-        ])
-        if (!alive) return
-        setAssigned(groups)
-        setUpcoming(schedules.filter((s) => s.status === 'planned'))
-        setHistory(hist)
-        setRating(avg)
-      } catch (err) {
-        console.error(err)
-        if (alive) setError('Failed to load dashboard.')
-      } finally {
-        if (alive) setLoading(false)
-      }
-    }
-    void run()
-    return () => {
-      alive = false
     }
   }, [user, navigate])
+
+  const { data, loading, error, updateData } = useAsyncResource(async () => {
+    const [assigned, schedules, history, rating] = await Promise.all([
+      listGroups({ mowerId: user!.id }),
+      listSchedulesForMower(20),
+      listHistory(user!.id, 10),
+      averageRating(user!.id),
+    ])
+    return { assigned, upcoming: schedules.filter((schedule) => schedule.status === 'planned'), history, rating }
+  }, [user?.id, user?.mowerProfile], { enabled: Boolean(user && isProfileComplete(user.mowerProfile)) })
+  const assigned = data?.assigned ?? []
+  const upcoming = data?.upcoming ?? []
+  const history = data?.history ?? []
+  const rating = data?.rating ?? null
 
   const complete = async (schedule: Schedule) => {
     const group = assigned.find((candidate) => candidate.id === schedule.groupId)
@@ -68,8 +50,11 @@ export default function MowerDashboardPage() {
         streetName: group.streetName ?? group.name,
       })
       const refreshedHistory = await listHistory(user!.id, 10)
-      setHistory(refreshedHistory)
-      setUpcoming((current) => current.filter((item) => item.id !== schedule.id))
+      updateData((current) => current && {
+        ...current,
+        history: refreshedHistory,
+        upcoming: current.upcoming.filter((item) => item.id !== schedule.id),
+      })
     } catch (err) {
       console.error(err)
       setCompletionError('Could not complete this job. No history record was added.')
@@ -79,7 +64,7 @@ export default function MowerDashboardPage() {
   }
 
   if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (error) return <p className="text-sm text-[var(--error)]">{error}</p>
+  if (error) return <p className="text-sm text-[var(--error)]">Failed to load dashboard.</p>
 
   return (
     <section className="space-y-6">

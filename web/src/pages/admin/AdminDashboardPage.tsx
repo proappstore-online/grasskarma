@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listUsers } from '../../lib/users'
 import { listGroups } from '../../lib/streetGroups'
 import type { Role, StreetGroupStatus } from '../../models'
+import { useAsyncResource } from '../../hooks/useAsyncResource'
 
 interface Stats {
   byRole: Record<Role | 'unassigned', number>
@@ -12,39 +12,20 @@ interface Stats {
 }
 
 export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let alive = true
-    const run = async () => {
-      try {
-        const [users, groups] = await Promise.all([listUsers({ limit: 1000 }), listGroups({ limit: 1000 })])
-        if (!alive) return
-        const byRole: Stats['byRole'] = { client: 0, mower: 0, admin: 0, unassigned: 0 }
-        for (const u of users) {
-          if (u.role === 'client' || u.role === 'mower' || u.role === 'admin') byRole[u.role]++
-          else byRole.unassigned++
-        }
-        const byStatus: Stats['byStatus'] = { forming: 0, active: 0, paused: 0, archived: 0 }
-        for (const g of groups) byStatus[g.status]++
-        setStats({ byRole, byStatus, totalUsers: users.length, totalGroups: groups.length })
-      } catch (err) {
-        console.error(err)
-        if (alive) setError('Failed to load stats.')
-      } finally {
-        if (alive) setLoading(false)
-      }
+  const { data: stats, loading, error } = useAsyncResource(async (): Promise<Stats> => {
+    const [users, groups] = await Promise.all([listUsers({ limit: 1000 }), listGroups({ limit: 1000 })])
+    const byRole: Stats['byRole'] = { client: 0, mower: 0, admin: 0, unassigned: 0 }
+    for (const user of users) {
+      if (user.role === 'client' || user.role === 'mower' || user.role === 'admin') byRole[user.role]++
+      else byRole.unassigned++
     }
-    void run()
-    return () => {
-      alive = false
-    }
+    const byStatus: Stats['byStatus'] = { forming: 0, active: 0, paused: 0, archived: 0 }
+    for (const group of groups) byStatus[group.status]++
+    return { byRole, byStatus, totalUsers: users.length, totalGroups: groups.length }
   }, [])
 
   if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (error) return <p className="text-sm text-[var(--error)]">{error}</p>
+  if (error) return <p className="text-sm text-[var(--error)]">Failed to load stats.</p>
   if (!stats) return null
 
   return (
