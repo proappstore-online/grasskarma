@@ -215,9 +215,12 @@
     },
     {
       "name": "create_group",
-      "description": "Create a street group with the caller as its sole admin and member (created_by is the verified caller)",
-      "operation": "execute",
-      "sql": "INSERT INTO street_groups (id, name, street_name, suburb, postcode, state, country, center_lat, center_lng, admin_ids, member_ids, assigned_mower_id, status, created_at, updated_at) SELECT :id, :name, :street_name, :suburb, :postcode, :state, :country, :center_lat, :center_lng, json_array(:__user_id), json_array(:__user_id), NULL, 'forming', :__now, :__now FROM users u WHERE u.id = :__user_id AND u.role = 'client' AND u.street_group_id IS NULL",
+      "description": "Atomically create a street group with the caller as its sole admin and member, and set the caller's group pointer",
+      "operation": "batch",
+      "statements": [
+        "INSERT INTO street_groups (id, name, street_name, suburb, postcode, state, country, center_lat, center_lng, admin_ids, member_ids, assigned_mower_id, status, created_at, updated_at) SELECT :id, :name, :street_name, :suburb, :postcode, :state, :country, :center_lat, :center_lng, json_array(:__user_id), json_array(:__user_id), NULL, 'forming', :__now, :__now FROM users u WHERE u.id = :__user_id AND u.role = 'client' AND u.street_group_id IS NULL",
+        "UPDATE users SET street_group_id = :id, updated_at = :__now WHERE id = :__user_id AND role = 'client' AND street_group_id IS NULL AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :id AND EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) AND EXISTS (SELECT 1 FROM json_each(g.member_ids) WHERE value = :__user_id))"
+      ],
       "params": {
         "id": {
           "type": "string"
@@ -288,9 +291,12 @@
     },
     {
       "name": "add_group_member",
-      "description": "Add a client to a group's member list (group admins/platform admins; a caller may add themself only after requesting to join). No-op if already a member.",
-      "operation": "execute",
-      "sql": "UPDATE street_groups SET member_ids = json_insert(member_ids, '$[#]', :user_id), updated_at = :__now WHERE id = :group_id AND NOT EXISTS (SELECT 1 FROM json_each(member_ids) WHERE value = :user_id) AND EXISTS (SELECT 1 FROM users u WHERE u.id = :user_id AND u.role = 'client' AND (u.street_group_id IS NULL OR u.street_group_id = :group_id)) AND ((EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) OR (:user_id = :__user_id AND EXISTS (SELECT 1 FROM street_group_interests i WHERE i.group_id = :group_id AND i.user_id = :__user_id)))",
+      "description": "Atomically add a client to a group and set their group pointer (group/platform admins, or a caller accepting their own join request).",
+      "operation": "batch",
+      "statements": [
+        "UPDATE street_groups SET member_ids = json_insert(member_ids, '$[#]', :user_id), updated_at = :__now WHERE id = :group_id AND NOT EXISTS (SELECT 1 FROM json_each(member_ids) WHERE value = :user_id) AND EXISTS (SELECT 1 FROM users u WHERE u.id = :user_id AND u.role = 'client' AND (u.street_group_id IS NULL OR u.street_group_id = :group_id)) AND ((EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) OR (:user_id = :__user_id AND EXISTS (SELECT 1 FROM street_group_interests i WHERE i.group_id = :group_id AND i.user_id = :__user_id)))",
+        "UPDATE users SET street_group_id = :group_id, updated_at = :__now WHERE id = :user_id AND role = 'client' AND (street_group_id IS NULL OR street_group_id = :group_id) AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND EXISTS (SELECT 1 FROM json_each(g.member_ids) WHERE value = :user_id) AND ((EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) OR (:user_id = :__user_id AND EXISTS (SELECT 1 FROM street_group_interests i WHERE i.group_id = :group_id AND i.user_id = :__user_id))))"
+      ],
       "params": {
         "group_id": {
           "type": "string"
@@ -303,9 +309,12 @@
     },
     {
       "name": "remove_group_member",
-      "description": "Remove a non-admin user from a group's member list (self-leave, or a group admin / platform admin removing someone); remove_group_admin must run first for admins",
-      "operation": "execute",
-      "sql": "UPDATE street_groups SET member_ids = (SELECT COALESCE(json_group_array(value), json_array()) FROM json_each(member_ids) WHERE value != :user_id), updated_at = :__now WHERE id = :group_id AND NOT EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :user_id) AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
+      "description": "Atomically remove a non-admin user from a group and clear their group pointer (self-leave, or a group/platform admin); remove_group_admin must run first for admins.",
+      "operation": "batch",
+      "statements": [
+        "UPDATE street_groups SET member_ids = (SELECT COALESCE(json_group_array(value), json_array()) FROM json_each(member_ids) WHERE value != :user_id), updated_at = :__now WHERE id = :group_id AND NOT EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :user_id) AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM json_each(admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
+        "UPDATE users SET street_group_id = NULL, updated_at = :__now WHERE id = :user_id AND street_group_id = :group_id AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND NOT EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :user_id) AND NOT EXISTS (SELECT 1 FROM json_each(g.member_ids) WHERE value = :user_id) AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')))"
+      ],
       "params": {
         "group_id": {
           "type": "string"
@@ -348,7 +357,7 @@
     },
     {
       "name": "delete_group",
-      "description": "Delete a group and all its schedules, interests, mower-interests and votes atomically (group admins or platform admins only)",
+      "description": "Delete a group, clear every member pointer, and remove its schedules, interests, mower-interests and votes atomically (group/platform admins only)",
       "operation": "batch",
       "params": {
         "group_id": {
@@ -357,6 +366,7 @@
       },
       "requires_auth": true,
       "statements": [
+        "UPDATE users SET street_group_id = NULL, updated_at = :__now WHERE street_group_id = :group_id AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')))",
         "DELETE FROM schedules WHERE group_id = :group_id AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')))",
         "DELETE FROM street_group_interests WHERE group_id = :group_id AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')))",
         "DELETE FROM mower_interest_votes WHERE interest_id IN (SELECT id FROM mower_interests WHERE group_id = :group_id) AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')))",
