@@ -31,7 +31,7 @@ All timestamps are epoch-millis integers. Map row ↔ domain in the matching `we
 
 `web/src/lib/app.ts` exports the `app` SDK instance + `dbQuery` / `dbExec` helpers. Each area has its own file:
 
-- `users.ts` — `getMe`, `getUser`, `listUsers({ role?, suburb?, postcode? })`, `createUser`, `updateUser`, plus server-guarded admin helpers `adminSetRole`, `adminDeleteUser`.
+- `users.ts` — `getMe`, `getUser`, `listUsers({ role?, suburb?, postcode? })`, `createUser`, `updateUser`, `deleteOwnAccount`, plus server-guarded admin helpers `adminSetRole`, `adminDeleteUser`. Account deletion uses one atomic cleanup action: users may target only themselves, while platform admins may target any user.
 - `streetGroups.ts` — `listGroups({ status, suburb, postcode, adminId, memberId, mowerId })`, `getGroup`, `createGroup`, `updateGroup`, `addMember/removeMember/addAdmin/removeAdmin`, `deleteGroup`, `createGroupInterest`, `listGroupInterests`, `deleteGroupInterest`.
 - `mowerInterests.ts` — `listInterestsForGroup/Mower`, `createMowerInterest`, `deleteMowerInterest`, `castVote(interestId, voterId, vote: -1|1)`, `listVotes`, `voteTally`.
 - `schedules.ts` — `listSchedules(groupId)`, `listSchedulesForMower`, `createSchedule`, `updateSchedule`, `markCompleted`, `deleteSchedule`.

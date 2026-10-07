@@ -1,7 +1,25 @@
+import { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
+import { deleteOwnAccount } from '../../lib/users'
 
 export default function AccountSettingsPage() {
   const { user, fasUser, signOut } = useAuth()
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  const handleDelete = async () => {
+    if (!user || !confirm('Delete your GrassKarma account and all of its app data? This cannot be undone.')) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await deleteOwnAccount()
+      await signOut()
+    } catch (error) {
+      console.error(error)
+      setDeleteError('We could not delete your GrassKarma account. Please try again.')
+      setDeleting(false)
+    }
+  }
 
   return (
     <section className="mx-auto max-w-2xl space-y-6">
@@ -33,7 +51,7 @@ export default function AccountSettingsPage() {
         </button>
       </div>
 
-      <div className="space-y-2 rounded-lg border border-[var(--error)] bg-[var(--glass)] p-5">
+      <div className="space-y-3 rounded-lg border border-[var(--error)] bg-[var(--glass)] p-5">
         <h2 className="display-font text-lg font-semibold text-[var(--error)]">Delete account</h2>
         <p className="text-sm text-[var(--muted)]">
           Deleting your GrassKarma account removes your role and data from this app only. To delete your
@@ -48,6 +66,14 @@ export default function AccountSettingsPage() {
           </a>
           .
         </p>
+        <button
+          onClick={() => void handleDelete()}
+          disabled={deleting || !user}
+          className="rounded-md bg-[var(--error)] px-3 py-1.5 text-sm text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {deleting ? 'Deleting account…' : 'Delete GrassKarma account'}
+        </button>
+        {deleteError && <p className="text-sm text-[var(--error)]" role="alert">{deleteError}</p>}
       </div>
     </section>
   )

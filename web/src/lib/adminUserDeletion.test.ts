@@ -82,6 +82,22 @@ describe('admin_delete_user', () => {
     expect(db.prepare('SELECT id FROM history_records').all()).toEqual([{ id: 'history' }])
   })
 
+  it('lets a user delete only their own account through the same atomic cleanup path', () => {
+    call('departing-mower', 'departing-mower')
+
+    expect(db.prepare("SELECT id FROM users WHERE id = 'departing-mower'").get()).toBeUndefined()
+    expect(db.prepare("SELECT admin_ids, member_ids, assigned_mower_id, status FROM street_groups WHERE id = 'sole-admin-group'").get())
+      .toEqual({ admin_ids: '["remaining-member"]', member_ids: '["remaining-member"]', assigned_mower_id: null, status: 'active' })
+    expect(db.prepare("SELECT admin_ids, member_ids, assigned_mower_id, status FROM street_groups WHERE id = 'orphaned-group'").get())
+      .toEqual({ admin_ids: '[]', member_ids: '[]', assigned_mower_id: null, status: 'archived' })
+    expect(db.prepare("SELECT mower_id FROM schedules WHERE id = 'schedule'").get()).toEqual({ mower_id: null })
+    expect(db.prepare('SELECT id FROM mower_interests').all()).toEqual([{ id: 'other-interest' }])
+    expect(db.prepare('SELECT interest_id, voter_id FROM mower_interest_votes').all()).toEqual([])
+    expect(db.prepare('SELECT id FROM street_group_interests').all()).toEqual([])
+    expect(db.prepare('SELECT id FROM mower_reviews').all()).toEqual([])
+    expect(db.prepare('SELECT id FROM history_records').all()).toEqual([])
+  })
+
   it('rolls back all cleanup if a dependent delete fails', () => {
     db.exec("CREATE TRIGGER reject_history_delete BEFORE DELETE ON history_records BEGIN SELECT RAISE(ABORT, 'history retention failed'); END")
 
