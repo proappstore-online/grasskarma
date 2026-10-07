@@ -25,11 +25,14 @@ function call(name: string, userId: string, params: Record<string, string | numb
   }
   db.exec('BEGIN')
   try {
+    let result: { changes: number | bigint } | undefined
     for (const sql of action.statements ?? [action.sql!]) {
       const statement = bind(sql)
-      db.prepare(statement.text).run(...statement.args)
+      result = db.prepare(statement.text).run(...statement.args)
     }
     db.exec('COMMIT')
+    if (!result) throw new Error(`Action ${name} did not execute`)
+    return result
   } catch (error) {
     db.exec('ROLLBACK')
     throw error
@@ -49,6 +52,7 @@ beforeEach(() => {
   for (const migration of migrations.migrations) db.exec(migration.sql)
   user('admin')
   user('mower', 'mower')
+  user('unrelated-mower', 'mower')
   user('applicant')
   group()
 })
@@ -81,6 +85,41 @@ describe('marketplace workflow actions', () => {
 
     expect(db.prepare("SELECT assigned_mower_id FROM street_groups WHERE id = 'g1'").get()).toEqual({ assigned_mower_id: 'mower' })
     expect(db.prepare("SELECT mower_id, status FROM schedules WHERE id = 'schedule'").get()).toEqual({ mower_id: 'mower', status: 'skipped' })
+  })
+
+  it('allows an admin to schedule only the group’s selected mower', () => {
+    db.prepare("INSERT INTO mower_interests (id, group_id, mower_id, created_at, updated_at) VALUES ('interest', 'g1', 'mower', 1, 1)").run()
+    call('update_group', 'admin', { id: 'g1', set_assigned_mower_id: 1, assigned_mower_id: 'mower' })
+
+    expect(call('create_schedule', 'admin', { id: 'selected', group_id: 'g1', day_of_week: 2, start_time: '09:30', mower_id: 'mower', due_date: null }).changes).toBe(1)
+    expect(call('create_schedule', 'admin', { id: 'unrelated', group_id: 'g1', day_of_week: 2, start_time: '09:30', mower_id: 'unrelated-mower', due_date: null }).changes).toBe(0)
+    expect(db.prepare("SELECT id FROM schedules ORDER BY id").all()).toEqual([{ id: 'selected' }])
+  })
+
+  it('refuses a schedule reassignment to an unrelated mower', () => {
+    db.prepare("INSERT INTO mower_interests (id, group_id, mower_id, created_at, updated_at) VALUES ('interest', 'g1', 'mower', 1, 1)").run()
+    call('update_group', 'admin', { id: 'g1', set_assigned_mower_id: 1, assigned_mower_id: 'mower' })
+    call('create_schedule', 'admin', { id: 'schedule', group_id: 'g1', day_of_week: null, start_time: null, mower_id: 'mower', due_date: null })
+
+    expect(call('update_schedule', 'admin', { id: 'schedule', set_mower_id: 1, mower_id: 'unrelated-mower' }).changes).toBe(0)
+    expect(db.prepare("SELECT mower_id FROM schedules WHERE id = 'schedule'").get()).toEqual({ mower_id: 'mower' })
+  })
+
+  it('evaluates the current selection atomically when scheduling after a stale client read', () => {
+    db.prepare("INSERT INTO mower_interests (id, group_id, mower_id, created_at, updated_at) VALUES ('interest-a', 'g1', 'mower', 1, 1), ('interest-b', 'g1', 'unrelated-mower', 1, 1)").run()
+    call('update_group', 'admin', { id: 'g1', set_assigned_mower_id: 1, assigned_mower_id: 'mower' })
+    // The UI could have read mower before another admin switches the selection.
+    call('update_group', 'admin', { id: 'g1', set_assigned_mower_id: 1, assigned_mower_id: 'unrelated-mower' })
+
+    expect(call('create_schedule', 'admin', { id: 'stale', group_id: 'g1', day_of_week: null, start_time: null, mower_id: 'mower', due_date: null }).changes).toBe(0)
+    expect(db.prepare("SELECT id FROM schedules WHERE id = 'stale'").get()).toBeUndefined()
+  })
+
+  it('does not let a non-admin create a schedule for the selected mower', () => {
+    db.prepare("INSERT INTO mower_interests (id, group_id, mower_id, created_at, updated_at) VALUES ('interest', 'g1', 'mower', 1, 1)").run()
+    call('update_group', 'admin', { id: 'g1', set_assigned_mower_id: 1, assigned_mower_id: 'mower' })
+
+    expect(call('create_schedule', 'applicant', { id: 'unauthorized', group_id: 'g1', day_of_week: null, start_time: null, mower_id: 'mower', due_date: null }).changes).toBe(0)
   })
 
   it('completes a mower job and writes history in one transaction', () => {

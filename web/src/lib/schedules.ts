@@ -65,7 +65,7 @@ export async function createSchedule(input: ScheduleCreate): Promise<Schedule> {
   validateScheduleRange(input)
   const id = crypto.randomUUID()
   const now = Date.now()
-  await x('create_schedule', {
+  const result = await x('create_schedule', {
     id,
     group_id: input.groupId,
     day_of_week: input.dayOfWeek ?? null,
@@ -73,6 +73,7 @@ export async function createSchedule(input: ScheduleCreate): Promise<Schedule> {
     mower_id: input.mowerId ?? null,
     due_date: input.dueDate ?? null,
   })
+  if (result.changes !== 1) throw new Error('Schedule creation refused by server.')
   return {
     id,
     groupId: input.groupId,
@@ -115,7 +116,8 @@ export async function updateSchedule(id: string, patch: SchedulePatch): Promise<
   if ('dueDate' in patch) set('set_due_date', 'due_date', patch.dueDate ?? null)
   if ('completedAt' in patch) set('set_completed_at', 'completed_at', patch.completedAt ?? null)
   if (Object.keys(params).length === 1) return
-  await x('update_schedule', params)
+  const result = await x('update_schedule', params)
+  if (result.changes !== 1) throw new Error('Schedule update refused by server.')
 }
 
 export async function markCompleted(id: string): Promise<void> {
