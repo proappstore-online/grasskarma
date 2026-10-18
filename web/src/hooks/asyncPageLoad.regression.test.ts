@@ -10,6 +10,7 @@ const migratedPages = [
   '../pages/mower/MowerDashboardPage.tsx',
   '../pages/mower/MowerStreetsPage.tsx',
   '../pages/mower/MowerHistoryPage.tsx',
+  '../pages/mower/MowerPublicProfile.tsx',
   '../pages/admin/AdminDashboardPage.tsx',
 ] as const
 

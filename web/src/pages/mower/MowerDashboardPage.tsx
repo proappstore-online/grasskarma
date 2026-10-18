@@ -2,14 +2,37 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { listGroups } from '../../lib/streetGroups'
-import { completeSchedule, listSchedulesForMower } from '../../lib/schedules'
+import { completeSchedule, listSchedulesForMower, type ScheduleCompletion } from '../../lib/schedules'
 import { listHistory } from '../../lib/history'
 import { averageRating } from '../../lib/reviews'
 import { useAsyncResource } from '../../hooks/useAsyncResource'
-import type { Schedule } from '../../models'
+import type { Schedule, StreetGroup } from '../../models'
 
 function isProfileComplete(m: { suburb?: string; postcode?: string; serviceRadiusKm?: number } | null | undefined) {
   return !!(m && m.suburb && m.postcode && typeof m.serviceRadiusKm === 'number' && m.serviceRadiusKm > 0)
+}
+
+/**
+ * The schedule query is newest-due first; upcoming work is shown soonest first,
+ * with undated jobs last.
+ */
+export function upcomingSchedules(schedules: Schedule[]): Schedule[] {
+  return schedules
+    .filter((schedule) => schedule.status === 'planned')
+    .sort((a, b) => (a.dueDate ?? Infinity) - (b.dueDate ?? Infinity))
+}
+
+/**
+ * The server authorizes completion by the schedule's own mower and group, so a
+ * job stays completable even when its group is no longer assigned to the mower.
+ */
+export function completionForSchedule(schedule: Schedule, groups: StreetGroup[]): ScheduleCompletion {
+  const group = groups.find((candidate) => candidate.id === schedule.groupId)
+  return {
+    scheduleId: schedule.id,
+    groupId: schedule.groupId,
+    streetName: group ? group.streetName ?? group.name : null,
+  }
 }
 
 export default function MowerDashboardPage() {
@@ -27,11 +50,11 @@ export default function MowerDashboardPage() {
   const { data, loading, error, updateData } = useAsyncResource(async () => {
     const [assigned, schedules, history, rating] = await Promise.all([
       listGroups({ mowerId: user!.id }),
-      listSchedulesForMower(20),
+      listSchedulesForMower(),
       listHistory(user!.id, 10),
       averageRating(user!.id),
     ])
-    return { assigned, upcoming: schedules.filter((schedule) => schedule.status === 'planned'), history, rating }
+    return { assigned, upcoming: upcomingSchedules(schedules), history, rating }
   }, [user?.id, user?.mowerProfile], { enabled: Boolean(user && isProfileComplete(user.mowerProfile)) })
   const assigned = data?.assigned ?? []
   const upcoming = data?.upcoming ?? []
@@ -39,16 +62,10 @@ export default function MowerDashboardPage() {
   const rating = data?.rating ?? null
 
   const complete = async (schedule: Schedule) => {
-    const group = assigned.find((candidate) => candidate.id === schedule.groupId)
-    if (!group) return
     setCompleting(schedule.id)
     setCompletionError(null)
     try {
-      await completeSchedule({
-        scheduleId: schedule.id,
-        groupId: group.id,
-        streetName: group.streetName ?? group.name,
-      })
+      await completeSchedule(completionForSchedule(schedule, assigned))
       const refreshedHistory = await listHistory(user!.id, 10)
       updateData((current) => current && {
         ...current,

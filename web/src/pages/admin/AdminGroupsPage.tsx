@@ -5,18 +5,20 @@ import { STREET_GROUP_STATUSES, type StreetGroup, type StreetGroupStatus } from 
 export default function AdminGroupsPage() {
   const [groups, setGroups] = useState<StreetGroup[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | StreetGroupStatus>('all')
 
   const load = async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const list = await listGroups({ limit: 1000 })
       setGroups(list)
     } catch (err) {
       console.error(err)
-      setError('Failed to load groups.')
+      setLoadError('Failed to load groups.')
     } finally {
       setLoading(false)
     }
@@ -60,7 +62,8 @@ export default function AdminGroupsPage() {
   const filtered = filter === 'all' ? groups : groups.filter((g) => g.status === filter)
 
   if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (error) return <p className="text-sm text-[var(--error)]">{error}</p>
+  // Mutation errors render inline: their messages refer to the reloaded list.
+  if (loadError) return <p className="text-sm text-[var(--error)]">{loadError}</p>
 
   return (
     <section className="space-y-6">
@@ -68,6 +71,8 @@ export default function AdminGroupsPage() {
         <h1 className="display-font text-2xl font-bold">Street groups</h1>
         <span className="text-sm text-[var(--muted)]">{filtered.length} shown</span>
       </header>
+
+      {error && <p className="text-sm text-[var(--error)]" role="alert">{error}</p>}
 
       <div className="flex flex-wrap gap-2">
         {(['all', ...STREET_GROUP_STATUSES] as const).map((f) => (

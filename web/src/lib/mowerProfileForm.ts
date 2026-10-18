@@ -59,13 +59,20 @@ export function createMowerProfileDraft(
 
 /**
  * Setup is a completion gate, while profile editing deliberately permits
- * incomplete legacy profiles. Keeping this mode here documents that contract
+ * incomplete legacy profiles (but never a malformed public contact address). Keeping this mode here documents that contract
  * instead of allowing the two pages to drift again.
  */
 export function validateMowerProfileDraft(
   draft: MowerProfileDraft,
   mode: MowerProfileFormMode,
 ): string | null {
+  // The public address is validated in both modes, so a malformed address is
+  // reported as itself instead of surfacing as a generic save failure.
+  try {
+    normalizePublicContactEmail(draft.publicContactEmail)
+  } catch (error) {
+    return (error as Error).message
+  }
   if (mode === 'edit') return null
 
   if (!draft.suburb.trim() || !/^\d{4}$/.test(draft.postcode.trim())) {

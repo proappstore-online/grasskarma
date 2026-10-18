@@ -52,6 +52,15 @@ describe('mower profile form boundary', () => {
     expect(validateMowerProfileDraft(incomplete, 'edit')).toBeNull()
   })
 
+  it('reports a malformed public contact email in both modes instead of a generic save failure', () => {
+    const draft = createMowerProfileDraft({ suburb: 'Carlton', postcode: '3053', serviceRadiusKm: 5 }, 'not-an-email', 'setup')
+
+    for (const mode of ['setup', 'edit'] as const) {
+      expect(validateMowerProfileDraft(draft, mode)).toBe('Enter a valid public contact email address.')
+      expect(validateMowerProfileDraft({ ...draft, publicContactEmail: ' hire@example.com ' }, mode)).toBeNull()
+    }
+  })
+
   it('uses the shared labelled field set for both setup and edit drafts', () => {
     const setup = createMowerProfileDraft(null, null, 'setup')
     const edit = createMowerProfileDraft(null, null, 'edit')

@@ -6,18 +6,20 @@ import { ROLES, type User, type Role } from '../../models'
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | Role>('all')
   const [updatingId, setUpdatingId] = useState<string | null>(null)
 
   const load = async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const list = await listUsers({ limit: 1000 })
       setUsers(list)
     } catch (err) {
       console.error(err)
-      setError('Failed to load users.')
+      setLoadError('Failed to load users.')
     } finally {
       setLoading(false)
     }
@@ -63,7 +65,8 @@ export default function AdminUsersPage() {
   const filtered = filter === 'all' ? users : users.filter((u) => u.role === filter)
 
   if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (error) return <p className="text-sm text-[var(--error)]">{error}</p>
+  // Mutation errors render inline: their messages refer to the reloaded list.
+  if (loadError) return <p className="text-sm text-[var(--error)]">{loadError}</p>
 
   return (
     <section className="space-y-6">
@@ -71,6 +74,8 @@ export default function AdminUsersPage() {
         <h1 className="display-font text-2xl font-bold">Users</h1>
         <span className="text-sm text-[var(--muted)]">{filtered.length} shown</span>
       </header>
+
+      {error && <p className="text-sm text-[var(--error)]" role="alert">{error}</p>}
 
       <div className="flex flex-wrap gap-2">
         {(['all', ...ROLES] as const).map((f) => (

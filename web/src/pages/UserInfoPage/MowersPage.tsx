@@ -80,7 +80,8 @@ export default function MowersPage() {
   }
 
   if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (loadError || actionError) return <p className="text-sm text-[var(--error)]">{actionError ?? 'Failed to load mowers.'}</p>
+  // An action error renders inline so the refreshed cards stay usable.
+  if (loadError) return <p className="text-sm text-[var(--error)]">Failed to load mowers.</p>
   if (!user?.streetGroupId) {
     return (
       <section className="space-y-3">
@@ -98,6 +99,8 @@ export default function MowersPage() {
           Review mower profiles and vote for your preferred option.
         </p>
       </header>
+
+      {actionError && <p className="text-sm text-[var(--error)]" role="alert">{actionError}</p>}
 
       {cards.length === 0 ? (
         <p className="text-sm text-[var(--muted)]">No mowers have expressed interest yet.</p>

@@ -4,7 +4,7 @@ import { LabeledField, LabeledTextArea, MowerProfileFields } from '../../compone
 import { useAuth } from '../../contexts/AuthContext'
 import { getUser, updateUser } from '../../lib/users'
 import { replaceAvatar } from '../../lib/photos'
-import { createMowerProfileDraft, serializeMowerProfileDraft } from '../../lib/mowerProfileForm'
+import { createMowerProfileDraft, serializeMowerProfileDraft, validateMowerProfileDraft } from '../../lib/mowerProfileForm'
 import { useAsyncResource } from '../../hooks/useAsyncResource'
 import type { ClientProfile } from '../../models'
 
@@ -68,6 +68,8 @@ export default function UserProfileEditPage() {
 
   const handleSave = async () => {
     if (!user) return
+    const validationError = user.role === 'mower' ? validateMowerProfileDraft(mowerProfileDraft, 'edit') : null
+    if (validationError) return setSaveError(validationError)
     setSaving(true)
     setSaveError(null)
     setMessage(null)

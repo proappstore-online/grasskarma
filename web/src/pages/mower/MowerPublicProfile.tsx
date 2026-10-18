@@ -1,42 +1,26 @@
-import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getUser } from '../../lib/users'
 import { listReviews, averageRating } from '../../lib/reviews'
 import { mowerContactHref } from '../../lib/mowerContacts'
-import type { User, MowerReview } from '../../models'
+import { useAsyncResource } from '../../hooks/useAsyncResource'
 
 export default function MowerPublicProfile() {
   const { mowerId } = useParams<{ mowerId: string }>()
-  const [mower, setMower] = useState<User | null>(null)
-  const [reviews, setReviews] = useState<MowerReview[]>([])
-  const [rating, setRating] = useState<{ average: number; count: number }>({ average: 0, count: 0 })
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (!mowerId) return
-    let alive = true
-    const run = async () => {
-      try {
-        const [m, rs, avg] = await Promise.all([
-          getUser(mowerId),
-          listReviews(mowerId),
-          averageRating(mowerId),
-        ])
-        if (!alive) return
-        setMower(m)
-        setReviews(rs)
-        setRating(avg)
-      } finally {
-        if (alive) setLoading(false)
-      }
-    }
-    void run()
-    return () => {
-      alive = false
-    }
-  }, [mowerId])
+  const { data, loading, error } = useAsyncResource(async () => {
+    const [mower, reviews, rating] = await Promise.all([
+      getUser(mowerId!),
+      listReviews(mowerId!),
+      averageRating(mowerId!),
+    ])
+    return { mower, reviews, rating }
+  }, [mowerId], { enabled: Boolean(mowerId) })
+  // /mower/:mowerId also catches unknown /mower/* paths; only a mower row is a mower profile.
+  const mower = data?.mower?.role === 'mower' ? data.mower : null
+  const reviews = data?.reviews ?? []
+  const rating = data?.rating ?? { average: 0, count: 0 }
 
   if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
+  if (error) return <p className="text-sm text-[var(--error)]">Failed to load mower profile.</p>
   if (!mower) return <p className="text-sm text-[var(--muted)]">Mower not found.</p>
 
   return (
