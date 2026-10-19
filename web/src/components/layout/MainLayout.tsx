@@ -40,7 +40,7 @@ export function MainLayout() {
   }, [location.pathname, isMobile])
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `rounded-md px-3 py-1.5 text-sm font-medium ${isActive ? 'bg-[var(--accent)] text-white' : 'text-[var(--ink)] hover:bg-[var(--accent-soft)]'}`
+    `rounded-md px-3 py-1.5 text-sm font-medium ${isActive ? 'bg-[var(--accent)] text-[var(--on-accent)]' : 'text-[var(--ink)] hover:bg-[var(--accent-soft)]'}`
 
   const navigation = (
     <>

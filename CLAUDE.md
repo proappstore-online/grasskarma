@@ -52,7 +52,7 @@ Pages and admin operations always go through these — never call `app.db.*` dir
 - **No payments.** `pas/grasskarma-port-plan.md` §1 + §4. `MembershipPage` / `MembershipSetupPage` are stubs ("subscription managed by ProAppStore platform"). `mower_profile.ratePerM2` stays in the schema but is informational.
 - **No FCM, no push.** Source repo didn't have either either; nothing to port.
 - **Google + GitHub OAuth only.** Source also supported email/password + Facebook. `AuthGate` calls `app.auth.signIn(provider)` directly because `useProGate`'s `signIn` is GitHub-only.
-- **MUI dropped** in favour of tailwind + the brand vars in `web/src/index.css` (`--accent` teal `#2D7D7D`, `--secondary` green `#5CB85C`).
+- **MUI dropped** in favour of tailwind + the brand vars in `web/src/index.css` (`--accent` teal `#297373`, darkened from the source `#2D7D7D` for AA contrast, `--secondary` green `#5CB85C`).
 - **Minimal tests.** Vitest regression tests for the auth path only (`pnpm test` = typecheck + `vitest run`); broader coverage deferred per ship-and-test-in-prod stance.
 
 ## Files of note

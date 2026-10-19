@@ -151,7 +151,7 @@ export default function MowersPage() {
                     disabled={voting === interest.id}
                     className={`rounded-md px-3 py-1.5 text-sm font-medium ${
                       myVote === 1
-                        ? 'bg-[var(--secondary)] text-white'
+                        ? 'bg-[var(--secondary)] text-[var(--on-secondary)]'
                         : 'border border-[var(--secondary)] text-[var(--secondary)] hover:bg-[var(--secondary-soft)]'
                     } disabled:opacity-50`}
                   >
@@ -162,7 +162,7 @@ export default function MowersPage() {
                     disabled={voting === interest.id}
                     className={`rounded-md px-3 py-1.5 text-sm font-medium ${
                       myVote === -1
-                        ? 'bg-[var(--error)] text-white'
+                        ? 'bg-[var(--error)] text-[var(--on-error)]'
                         : 'border border-[var(--error)] text-[var(--error)] hover:bg-[var(--paper)]'
                     } disabled:opacity-50`}
                   >
@@ -175,7 +175,7 @@ export default function MowersPage() {
                   onClick={() => void handleAssign(mower.id)}
                   disabled={voting === `assign:${mower.id}` || assignedMowerId === mower.id}
                   className={`mt-3 w-full rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50 ${
-                    assignedMowerId === mower.id ? 'bg-[var(--secondary-soft)] text-[var(--success)]' : 'bg-[var(--accent)] text-white hover:opacity-90'
+                    assignedMowerId === mower.id ? 'bg-[var(--secondary-soft)] text-[var(--success)]' : 'bg-[var(--accent)] text-[var(--on-accent)] hover:opacity-90'
                   }`}
                 >
                   {assignedMowerId === mower.id ? 'Assigned mower' : voting === `assign:${mower.id}` ? 'Assigning…' : 'Assign this mower'}

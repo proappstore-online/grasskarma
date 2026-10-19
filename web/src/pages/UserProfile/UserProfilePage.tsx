@@ -52,7 +52,7 @@ export default function UserProfilePage() {
           {isMe && (
             <button
               onClick={() => navigate(`${baseEdit}/user/${user.id}/edit`)}
-              className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+              className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-sm font-medium text-[var(--on-accent)] hover:opacity-90"
             >
               Edit
             </button>

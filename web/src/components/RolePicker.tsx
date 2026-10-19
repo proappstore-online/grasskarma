@@ -33,7 +33,7 @@ export function RolePicker() {
             key={role}
             disabled={busy}
             onClick={() => pick(role)}
-            className={`rounded-2xl border border-[var(--line)] p-6 text-left hover:text-white disabled:opacity-50 ${client ? 'bg-[var(--accent-soft)] hover:bg-[var(--accent)]' : 'bg-[var(--secondary-soft)] hover:bg-[var(--secondary)]'}`}
+            className={`rounded-2xl border border-[var(--line)] p-6 text-left disabled:opacity-50 ${client ? 'bg-[var(--accent-soft)] hover:bg-[var(--accent)] hover:text-[var(--on-accent)]' : 'bg-[var(--secondary-soft)] hover:bg-[var(--secondary)] hover:text-[var(--on-secondary)]'}`}
           >
             <div className="display-font text-xl font-semibold">{client ? "I'm a homeowner" : 'I mow lawns'}</div>
             <div className="mt-2 text-sm opacity-80">

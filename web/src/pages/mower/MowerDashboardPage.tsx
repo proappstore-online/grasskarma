@@ -139,7 +139,7 @@ export default function MowerDashboardPage() {
                 </span>
                 <div className="flex items-center gap-3">
                   <Link to={`/mower/history`} className="text-xs text-[var(--accent)] hover:underline">History</Link>
-                  <button onClick={() => void complete(s)} disabled={completing === s.id} className="rounded-md bg-[var(--accent)] px-2 py-1 text-xs font-medium text-white disabled:opacity-50">
+                  <button onClick={() => void complete(s)} disabled={completing === s.id} className="rounded-md bg-[var(--accent)] px-2 py-1 text-xs font-medium text-[var(--on-accent)] disabled:opacity-50">
                     {completing === s.id ? 'Completing…' : 'Mark complete'}
                   </button>
                 </div>

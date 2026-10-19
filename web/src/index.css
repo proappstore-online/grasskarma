@@ -3,10 +3,13 @@
 @layer base {
 :root {
   color-scheme: light;
+  /* Text and fill pairs below are checked for WCAG AA contrast by the a11y
+     suite (#30). --on-* is the text colour for a filled --accent/--error/
+     --secondary surface. */
   --paper: #ffffff;
   --ink: #111111;
   --muted: #666666;
-  --accent: #2d7d7d;
+  --accent: #297373;
   --accent-soft: #e0f2f1;
   --secondary: #5cb85c;
   --secondary-soft: #e7f5e7;
@@ -14,14 +17,17 @@
   --glass: rgba(255,255,255,0.72);
   --glass-hover: rgba(255,255,255,0.85);
   --error: #c74f43;
-  --success: #2f8f57;
+  --success: #237a47;
+  --on-accent: #ffffff;
+  --on-error: #ffffff;
+  --on-secondary: #111111;
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
   --paper: #000000;
   --ink: #f0f0f0;
-  --muted: #888888;
+  --muted: #a0a0a0;
   --accent: #4ec4c4;
   --accent-soft: #133838;
   --secondary: #7fcc7f;
@@ -31,6 +37,9 @@
   --glass-hover: rgba(38,38,38,0.9);
   --error: #ff7a72;
   --success: #74d49a;
+  --on-accent: #04201f;
+  --on-error: #000000;
+  --on-secondary: #000000;
 }
 
 html { min-height: 100%; }

@@ -106,7 +106,7 @@ export default function AdminUserDetailPage() {
               disabled={busy}
               className={`rounded-md px-3 py-1.5 text-sm ${
                 user.role === r
-                  ? 'bg-[var(--accent)] text-white'
+                  ? 'bg-[var(--accent)] text-[var(--on-accent)]'
                   : 'border border-[var(--line)] text-[var(--ink)] hover:bg-[var(--accent-soft)]'
               } disabled:opacity-50`}
             >
@@ -157,7 +157,7 @@ export default function AdminUserDetailPage() {
         <button
           onClick={() => void handleDelete()}
           disabled={busy}
-          className="mt-3 rounded-md bg-[var(--error)] px-3 py-1.5 text-sm text-white hover:opacity-90 disabled:opacity-50"
+          className="mt-3 rounded-md bg-[var(--error)] px-3 py-1.5 text-sm text-[var(--on-error)] hover:opacity-90 disabled:opacity-50"
         >
           Delete user
         </button>

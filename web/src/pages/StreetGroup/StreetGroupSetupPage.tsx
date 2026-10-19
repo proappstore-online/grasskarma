@@ -180,7 +180,7 @@ export default function StreetGroupSetupPage() {
         <button
           onClick={() => void handleSearch()}
           disabled={busy}
-          className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--on-accent)] hover:opacity-90 disabled:opacity-50"
         >
           {busy ? 'Searching…' : 'Find my group'}
         </button>
@@ -221,7 +221,7 @@ export default function StreetGroupSetupPage() {
             <button
               onClick={() => void handleCreate()}
               disabled={busy}
-              className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+              className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--on-accent)] hover:opacity-90 disabled:opacity-50"
             >
               {busy ? 'Creating…' : 'Create group'}
             </button>

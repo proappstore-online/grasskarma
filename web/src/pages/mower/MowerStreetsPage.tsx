@@ -73,7 +73,7 @@ export default function MowerStreetsPage() {
                   className={`mt-4 w-full rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                     isInterested
                       ? 'border border-[var(--accent)] text-[var(--accent)]'
-                      : 'bg-[var(--accent)] text-white hover:opacity-90'
+                      : 'bg-[var(--accent)] text-[var(--on-accent)] hover:opacity-90'
                   } disabled:opacity-60`}
                 >
                   {isInterested ? 'Interested' : savingId === g.id ? 'Saving…' : 'Express interest'}

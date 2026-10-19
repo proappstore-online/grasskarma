@@ -85,7 +85,7 @@ export default function ShareHirePage() {
                 <button
                   onClick={() => void handleContact(m.id)}
                   disabled={contacting === m.id}
-                  className="flex-1 rounded-md bg-[var(--accent)] px-3 py-1.5 text-center text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+                  className="flex-1 rounded-md bg-[var(--accent)] px-3 py-1.5 text-center text-sm font-medium text-[var(--on-accent)] hover:opacity-90 disabled:opacity-50"
                 >
                   {contacting === m.id ? 'Opening…' : 'Email'}
                 </button>

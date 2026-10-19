@@ -77,7 +77,7 @@ export default function AccountSettingsPage() {
         <button
           onClick={() => void handleDelete()}
           disabled={deleting || !user}
-          className="rounded-md bg-[var(--error)] px-3 py-1.5 text-sm text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-md bg-[var(--error)] px-3 py-1.5 text-sm text-[var(--on-error)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {deleting ? 'Deleting account…' : 'Delete GrassKarma account'}
         </button>

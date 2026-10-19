@@ -84,7 +84,7 @@ export default function AdminUsersPage() {
             onClick={() => setFilter(f)}
             className={`rounded-md px-3 py-1 text-sm ${
               filter === f
-                ? 'bg-[var(--accent)] text-white'
+                ? 'bg-[var(--accent)] text-[var(--on-accent)]'
                 : 'border border-[var(--line)] text-[var(--ink)] hover:bg-[var(--accent-soft)]'
             }`}
           >

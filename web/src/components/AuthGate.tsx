@@ -21,7 +21,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
         <div className="flex w-full max-w-xs flex-col gap-3">
           <button
             onClick={() => void signIn('google')}
-            className="rounded-2xl bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[var(--accent)] hover:opacity-90"
+            className="rounded-2xl bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-[var(--on-accent)] hover:bg-[var(--accent)] hover:opacity-90"
           >
             Sign in with Google
           </button>
@@ -50,7 +50,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
         {profileLoadError && <p className="max-w-md text-sm text-[var(--error)]">{profileLoadError.message}</p>}
         <button
           onClick={() => void retryProfileLoad()}
-          className="rounded-2xl bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-white hover:opacity-90"
+          className="rounded-2xl bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-[var(--on-accent)] hover:opacity-90"
         >
           Try again
         </button>
