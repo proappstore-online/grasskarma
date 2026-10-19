@@ -157,14 +157,19 @@ jobs:
           # SMOKE TEST ACCOUNT: a platform-admin grant maps this repo + workflow
           # to one dedicated smoke-test account (see e2e/README.md). Without a
           # grant, fall back to the PAS_E2E_SESSION_TOKEN secret; with neither,
-          # the signed-in smoke flows fail with "SMOKE SETUP MISSING".
+          # the signed-in smoke flows skip under a "SMOKE SETUP MISSING" warning.
           OIDC=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://api.proappstore.online" | jq -r '.value')
           SESSION=$(curl -sS -X POST https://api.proappstore.online/v1/auth/exchange/oidc \
             -H "Authorization: Bearer $OIDC" | jq -r '.sessionToken // empty')
           if [ -n "$SESSION" ]; then echo "Minted a smoke-account session from the OIDC grant"
           elif [ -n "$FALLBACK_SESSION" ]; then SESSION="$FALLBACK_SESSION"; echo "No OIDC grant; using PAS_E2E_SESSION_TOKEN"
-          else echo "::warning::No OIDC session grant and no PAS_E2E_SESSION_TOKEN; signed-in smoke flows will fail"; fi
+          else
+            MSG="SMOKE SETUP MISSING: no OIDC session grant and no PAS_E2E_SESSION_TOKEN, so the signed-in smoke flows (sign-in, street group, book a mow) are SKIPPED. See e2e/README.md."
+            echo "::warning::$MSG"
+            echo "> [!WARNING]" >> "$GITHUB_STEP_SUMMARY"
+            echo "> $MSG" >> "$GITHUB_STEP_SUMMARY"
+          fi
           if [ -n "$SESSION" ]; then
             echo "::add-mask::$SESSION"
             echo "E2E_SESSION_TOKEN=$SESSION" >> "$GITHUB_ENV"

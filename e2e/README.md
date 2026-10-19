@@ -40,7 +40,9 @@ POST https://api.proappstore.online/v1/admin/oidc-session-grants
 ```
 
 Without a grant, the job falls back to the `PAS_E2E_SESSION_TOKEN` secret. With neither, the
-signed-in flows **fail** with `SMOKE SETUP MISSING` rather than skipping and reporting green.
+signed-in flows are **skipped**. The job then posts a `SMOKE SETUP MISSING` warning and a banner in
+the run summary. A missing session is a setup gap, not a broken flow, so it does not fail the
+deploy run. A flow that runs and breaks does fail it, naming the flow.
 
 ## Run locally
 
