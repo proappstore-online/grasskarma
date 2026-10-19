@@ -55,7 +55,7 @@ export default function MowerSetupPage() {
         />
       </div>
 
-      {error && <p className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
 
       <button
         onClick={() => void handleSave()}

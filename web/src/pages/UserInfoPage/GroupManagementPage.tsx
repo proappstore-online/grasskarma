@@ -206,7 +206,7 @@ export default function GroupManagementPage() {
     userId: user?.id,
   })
 
-  if (view === 'loading') return <p className="text-sm text-[var(--muted)]">Loading…</p>
+  if (view === 'loading') return <p role="status" className="text-sm text-[var(--muted)]">Loading…</p>
   if (view === 'setup') return <Navigate to="/app/setup" replace />
   if (view === 'app') return <Navigate to="/app" replace />
   // `content` means both values are present. Keep this guard for TypeScript
@@ -219,8 +219,8 @@ export default function GroupManagementPage() {
         <h1 className="display-font text-2xl font-bold">Manage {group.name}</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">Review neighbours, set the mowing cadence and manage scheduled work.</p>
       </header>
-      {error && <p className="text-sm text-[var(--error)]">{error}</p>}
-      {notice && <p className="text-sm text-[var(--success)]">{notice}</p>}
+      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {notice && <p role="status" className="text-sm text-[var(--success)]">{notice}</p>}
 
       <section className="rounded-lg border border-[var(--line)] bg-[var(--glass)] p-5">
         <h2 className="display-font text-lg font-semibold">Join requests</h2>

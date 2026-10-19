@@ -36,10 +36,10 @@ export default function DashboardPage() {
   const mowerRating = data?.mowerRating ?? null
 
   if (loading) {
-    return <p className="text-sm text-[var(--muted)]">Loading…</p>
+    return <p role="status" className="text-sm text-[var(--muted)]">Loading…</p>
   }
   if (error) {
-    return <p className="text-sm text-[var(--error)]">Failed to load dashboard.</p>
+    return <p role="alert" className="text-sm text-[var(--error)]">Failed to load dashboard.</p>
   }
   if (!group) {
     return <p className="text-sm text-[var(--muted)]">Group not found.</p>

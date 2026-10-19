@@ -32,8 +32,8 @@ export default function ShareHirePage() {
     }
   }
 
-  if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (error) return <p className="text-sm text-[var(--error)]">Failed to load mowers.</p>
+  if (loading) return <p role="status" className="text-sm text-[var(--muted)]">Loading…</p>
+  if (error) return <p role="alert" className="text-sm text-[var(--error)]">Failed to load mowers.</p>
 
   return (
     <section className="space-y-6">
@@ -44,7 +44,7 @@ export default function ShareHirePage() {
         </p>
       </header>
 
-      {contactError && <p className="text-sm text-[var(--error)]">{contactError}</p>}
+      {contactError && <p role="alert" className="text-sm text-[var(--error)]">{contactError}</p>}
 
       {mowers.length === 0 ? (
         <p className="text-sm text-[var(--muted)]">No mowers signed up yet.</p>

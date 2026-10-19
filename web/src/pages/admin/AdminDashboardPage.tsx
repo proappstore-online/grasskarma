@@ -24,8 +24,8 @@ export default function AdminDashboardPage() {
     return { byRole, byStatus, totalUsers: users.length, totalGroups: groups.length }
   }, [])
 
-  if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (error) return <p className="text-sm text-[var(--error)]">Failed to load stats.</p>
+  if (loading) return <p role="status" className="text-sm text-[var(--muted)]">Loading…</p>
+  if (error) return <p role="alert" className="text-sm text-[var(--error)]">Failed to load stats.</p>
   if (!stats) return null
 
   return (

@@ -61,9 +61,9 @@ export default function AdminGroupsPage() {
 
   const filtered = filter === 'all' ? groups : groups.filter((g) => g.status === filter)
 
-  if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
+  if (loading) return <p role="status" className="text-sm text-[var(--muted)]">Loading…</p>
   // Mutation errors render inline: their messages refer to the reloaded list.
-  if (loadError) return <p className="text-sm text-[var(--error)]">{loadError}</p>
+  if (loadError) return <p role="alert" className="text-sm text-[var(--error)]">{loadError}</p>
 
   return (
     <section className="space-y-6">

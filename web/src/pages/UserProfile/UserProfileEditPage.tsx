@@ -97,9 +97,9 @@ export default function UserProfileEditPage() {
     }
   }
 
-  if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (accessError || loadError) return <p className="text-sm text-[var(--error)]">{accessError ?? 'Failed to load profile.'}</p>
-  if (!loading && !user) return <p className="text-sm text-[var(--error)]">User not found.</p>
+  if (loading) return <p role="status" className="text-sm text-[var(--muted)]">Loading…</p>
+  if (accessError || loadError) return <p role="alert" className="text-sm text-[var(--error)]">{accessError ?? 'Failed to load profile.'}</p>
+  if (!loading && !user) return <p role="alert" className="text-sm text-[var(--error)]">User not found.</p>
   if (!user) return null
 
   return (
@@ -169,8 +169,8 @@ export default function UserProfileEditPage() {
         </div>
       )}
 
-      {saveError && <p className="text-sm text-[var(--error)]">{saveError}</p>}
-      {message && <p className="text-sm text-[var(--success)]">{message}</p>}
+      {saveError && <p role="alert" className="text-sm text-[var(--error)]">{saveError}</p>}
+      {message && <p role="status" className="text-sm text-[var(--success)]">{message}</p>}
 
       <div className="flex justify-between">
         <button

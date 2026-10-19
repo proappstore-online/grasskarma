@@ -79,9 +79,9 @@ export default function MowersPage() {
     }
   }
 
-  if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
+  if (loading) return <p role="status" className="text-sm text-[var(--muted)]">Loading…</p>
   // An action error renders inline so the refreshed cards stay usable.
-  if (loadError) return <p className="text-sm text-[var(--error)]">Failed to load mowers.</p>
+  if (loadError) return <p role="alert" className="text-sm text-[var(--error)]">Failed to load mowers.</p>
   if (!user?.streetGroupId) {
     return (
       <section className="space-y-3">

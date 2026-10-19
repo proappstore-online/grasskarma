@@ -18,9 +18,9 @@ export default function UserProfilePage() {
   const user = data?.user ?? null
   const rating = data?.rating ?? null
 
-  if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (!userId) return <p className="text-sm text-[var(--error)]">User ID is missing.</p>
-  if (error) return <p className="text-sm text-[var(--error)]">Failed to load profile.</p>
+  if (loading) return <p role="status" className="text-sm text-[var(--muted)]">Loading…</p>
+  if (!userId) return <p role="alert" className="text-sm text-[var(--error)]">User ID is missing.</p>
+  if (error) return <p role="alert" className="text-sm text-[var(--error)]">Failed to load profile.</p>
   if (!user) return <p className="text-sm text-[var(--muted)]">User not found.</p>
 
   const isMe = me?.id === user.id

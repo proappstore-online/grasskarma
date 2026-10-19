@@ -71,8 +71,8 @@ export default function AdminUserDetailPage() {
     }
   }
 
-  if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (error && !user) return <p className="text-sm text-[var(--error)]">{error}</p>
+  if (loading) return <p role="status" className="text-sm text-[var(--muted)]">Loading…</p>
+  if (error && !user) return <p role="alert" className="text-sm text-[var(--error)]">{error}</p>
   if (!user) return <p className="text-sm text-[var(--muted)]">User not found.</p>
 
   return (

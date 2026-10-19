@@ -18,8 +18,8 @@ export default function MowerHistoryPage() {
   )
   const items = data ?? []
 
-  if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (error) return <p className="text-sm text-[var(--error)]">Failed to load history.</p>
+  if (loading) return <p role="status" className="text-sm text-[var(--muted)]">Loading…</p>
+  if (error) return <p role="alert" className="text-sm text-[var(--error)]">Failed to load history.</p>
 
   return (
     <section className="space-y-6">

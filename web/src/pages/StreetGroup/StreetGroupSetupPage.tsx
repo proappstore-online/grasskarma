@@ -186,8 +186,8 @@ export default function StreetGroupSetupPage() {
         </button>
       </div>
 
-      {error && <p className="text-sm text-[var(--error)]">{error}</p>}
-      {message && <p className="text-sm text-[var(--success)]">{message}</p>}
+      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {message && <p role="status" className="text-sm text-[var(--success)]">{message}</p>}
 
       {searched && (
         <div className="space-y-4">

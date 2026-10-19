@@ -80,8 +80,8 @@ export default function MowerDashboardPage() {
     }
   }
 
-  if (loading) return <p className="text-sm text-[var(--muted)]">Loading…</p>
-  if (error) return <p className="text-sm text-[var(--error)]">Failed to load dashboard.</p>
+  if (loading) return <p role="status" className="text-sm text-[var(--muted)]">Loading…</p>
+  if (error) return <p role="alert" className="text-sm text-[var(--error)]">Failed to load dashboard.</p>
 
   return (
     <section className="space-y-6">
@@ -126,7 +126,7 @@ export default function MowerDashboardPage() {
 
       <div className="rounded-lg border border-[var(--line)] bg-[var(--glass)] p-5">
         <h2 className="display-font text-lg font-semibold">Upcoming mows</h2>
-        {completionError && <p className="mt-2 text-sm text-[var(--error)]">{completionError}</p>}
+        {completionError && <p role="alert" className="mt-2 text-sm text-[var(--error)]">{completionError}</p>}
         {upcoming.length === 0 ? (
           <p className="mt-2 text-sm text-[var(--muted)]">No scheduled jobs.</p>
         ) : (
