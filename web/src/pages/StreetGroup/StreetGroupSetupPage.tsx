@@ -162,7 +162,7 @@ export default function StreetGroupSetupPage() {
             type="text"
             value={suburb}
             onChange={(e) => setSuburb(e.target.value)}
-            className="w-full rounded-md border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none"
+            className="w-full rounded-md border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-sm focus:border-[var(--accent)]"
           />
         </div>
         <div>
@@ -174,7 +174,7 @@ export default function StreetGroupSetupPage() {
             onChange={(e) => setPostcode(e.target.value)}
             inputMode="numeric"
             maxLength={4}
-            className="w-full rounded-md border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none"
+            className="w-full rounded-md border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-sm focus:border-[var(--accent)]"
           />
         </div>
         <button
@@ -215,7 +215,7 @@ export default function StreetGroupSetupPage() {
                 value={streetName}
                 onChange={(e) => setStreetName(e.target.value)}
                 placeholder="e.g. Collins"
-                className="w-full rounded-md border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none"
+                className="w-full rounded-md border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-sm focus:border-[var(--accent)]"
               />
             </div>
             <button

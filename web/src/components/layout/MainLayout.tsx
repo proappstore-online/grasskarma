@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -34,10 +34,33 @@ export function MainLayout() {
   const base = role === 'mower' ? '/mower' : role === 'admin' ? '/admin' : '/app'
   const isMobile = useMobileNavigation()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
+  const mainRef = useRef<HTMLElement>(null)
+  const previousPathname = useRef(location.pathname)
 
   useEffect(() => {
     setIsMenuOpen(false)
   }, [location.pathname, isMobile])
+
+  // A client-side navigation does not move focus the way a page load does.
+  // Move it to the new page's content so keyboard and screen-reader users
+  // start there rather than on the link they just activated.
+  useEffect(() => {
+    if (previousPathname.current === location.pathname) return
+    previousPathname.current = location.pathname
+    mainRef.current?.focus()
+  }, [location.pathname])
+
+  useEffect(() => {
+    if (!isMenuOpen) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setIsMenuOpen(false)
+      menuButtonRef.current?.focus()
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [isMenuOpen])
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `rounded-md px-3 py-1.5 text-sm font-medium ${isActive ? 'bg-[var(--accent)] text-[var(--on-accent)]' : 'text-[var(--ink)] hover:bg-[var(--accent-soft)]'}`
@@ -106,6 +129,12 @@ export function MainLayout() {
 
   return (
     <div className="min-h-[100dvh] bg-[var(--paper)] text-[var(--ink)]">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-20 focus:rounded-md focus:bg-[var(--accent)] focus:px-4 focus:py-3 focus:text-sm focus:font-semibold focus:text-[var(--on-accent)]"
+      >
+        Skip to content
+      </a>
       <header className="sticky top-0 z-10 border-b border-[var(--line)] bg-[var(--glass)] backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
           <Link to={base} className="display-font text-xl font-bold">
@@ -113,8 +142,9 @@ export function MainLayout() {
           </Link>
           {isMobile ? (
             <button
+              ref={menuButtonRef}
               type="button"
-              aria-controls="main-navigation"
+              aria-controls={isMenuOpen ? 'main-navigation' : undefined}
               aria-expanded={isMenuOpen}
               aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
               onClick={() => setIsMenuOpen((open) => !open)}
@@ -138,7 +168,7 @@ export function MainLayout() {
           </nav>
         )}
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-8">
+      <main id="main-content" ref={mainRef} tabIndex={-1} className="mx-auto max-w-5xl px-4 py-8 focus:outline-none">
         <Outlet />
       </main>
     </div>

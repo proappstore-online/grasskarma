@@ -30,7 +30,7 @@ export function LabeledField({
         inputMode={inputMode}
         maxLength={maxLength}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-md border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none"
+        className="w-full rounded-md border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-sm focus:border-[var(--accent)]"
       />
     </div>
   )
@@ -51,7 +51,7 @@ export function LabeledTextArea({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         rows={rows}
-        className="w-full rounded-md border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none"
+        className="w-full rounded-md border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-sm focus:border-[var(--accent)]"
       />
     </div>
   )

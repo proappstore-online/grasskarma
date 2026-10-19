@@ -19,7 +19,7 @@ export function RolePicker() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[100dvh] max-w-2xl flex-col items-center justify-center gap-6 px-4 py-12">
+    <main className="mx-auto flex min-h-[100dvh] max-w-2xl flex-col items-center justify-center gap-6 px-4 py-12">
       <h1 className="display-font text-3xl font-bold text-[var(--ink)]">
         Welcome, {fasUser?.login ?? 'neighbour'}
       </h1>
@@ -31,6 +31,7 @@ export function RolePicker() {
           const client = role === 'client'
           return <button
             key={role}
+            type="button"
             disabled={busy}
             onClick={() => pick(role)}
             className={`rounded-2xl border border-[var(--line)] p-6 text-left disabled:opacity-50 ${client ? 'bg-[var(--accent-soft)] hover:bg-[var(--accent)] hover:text-[var(--on-accent)]' : 'bg-[var(--secondary-soft)] hover:bg-[var(--secondary)] hover:text-[var(--on-secondary)]'}`}
@@ -42,7 +43,7 @@ export function RolePicker() {
           </button>
         })}
       </div>
-      {error && <p className="text-sm text-[var(--error)]">{error}</p>}
-    </div>
+      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+    </main>
   )
 }

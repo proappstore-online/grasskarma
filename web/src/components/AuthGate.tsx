@@ -7,32 +7,34 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (gate === 'loading') {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center">
-        <p className="text-[var(--muted)]">Loading...</p>
-      </div>
+      <main className="flex min-h-[100dvh] items-center justify-center">
+        <p role="status" className="text-[var(--muted)]">Loading…</p>
+      </main>
     )
   }
 
   if (gate === 'signed-out') {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 px-4">
+      <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 px-4">
         <h1 className="display-font text-3xl font-bold text-[var(--ink)]">GrassKarma</h1>
         <p className="text-[var(--muted)]">Hyper-local lawn care, one street at a time.</p>
         <div className="flex w-full max-w-xs flex-col gap-3">
           <button
+            type="button"
             onClick={() => void signIn('google')}
             className="rounded-2xl bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-[var(--on-accent)] hover:bg-[var(--accent)] hover:opacity-90"
           >
             Sign in with Google
           </button>
           <button
+            type="button"
             onClick={() => void signIn('github')}
             className="rounded-2xl border border-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-[var(--accent)] hover:opacity-90"
           >
             Sign in with GitHub
           </button>
         </div>
-      </div>
+      </main>
     )
   }
 
@@ -42,19 +44,19 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (gate === 'profile-error') {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 px-4 text-center">
+      <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 px-4 text-center">
         <h1 className="display-font text-3xl font-bold text-[var(--ink)]">We couldn&apos;t load your profile</h1>
         <p className="max-w-md text-[var(--muted)]">
           Your account is still signed in. Please try again before continuing.
         </p>
-        {profileLoadError && <p className="max-w-md text-sm text-[var(--error)]">{profileLoadError.message}</p>}
+        {profileLoadError && <p role="alert" className="max-w-md text-sm text-[var(--error)]">{profileLoadError.message}</p>}
         <button
           onClick={() => void retryProfileLoad()}
           className="rounded-2xl bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-[var(--on-accent)] hover:opacity-90"
         >
           Try again
         </button>
-      </div>
+      </main>
     )
   }
 
