@@ -85,7 +85,7 @@ export default function AdminUserDetailPage() {
         {user.photoUrl ? (
           <img src={user.photoUrl} alt="" className="h-20 w-20 rounded-full object-cover" />
         ) : (
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--accent-soft)] text-2xl text-[var(--accent)]">
+          <div aria-hidden="true" className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--accent-soft)] text-2xl text-[var(--accent)]">
             {(user.name?.charAt(0) ?? '?').toUpperCase()}
           </div>
         )}
@@ -103,6 +103,7 @@ export default function AdminUserDetailPage() {
             <button
               key={r}
               onClick={() => void handleRole(r)}
+              aria-pressed={user.role === r}
               disabled={busy}
               className={`rounded-md px-3 py-1.5 text-sm ${
                 user.role === r
@@ -123,7 +124,7 @@ export default function AdminUserDetailPage() {
           <h2 className="display-font text-lg font-semibold">Mower stats</h2>
           <dl className="mt-3 grid grid-cols-2 gap-y-1 text-sm">
             <dt className="text-[var(--muted)]">Average rating</dt>
-            <dd>★ {rating.average.toFixed(1)} ({rating.count})</dd>
+            <dd><span aria-hidden="true">★ </span>{rating.average.toFixed(1)} ({rating.count} review{rating.count === 1 ? '' : 's'})</dd>
             <dt className="text-[var(--muted)]">Recent jobs</dt>
             <dd>{history.length}</dd>
             <dt className="text-[var(--muted)]">Total income (recent)</dt>

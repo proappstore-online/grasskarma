@@ -30,7 +30,7 @@ export default function MowerPublicProfile() {
           {mower.photoUrl ? (
             <img src={mower.photoUrl} alt="" className="h-20 w-20 rounded-full object-cover" />
           ) : (
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--accent-soft)] text-2xl text-[var(--accent)]">
+            <div aria-hidden="true" className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--accent-soft)] text-2xl text-[var(--accent)]">
               {(mower.name?.charAt(0) ?? '?').toUpperCase()}
             </div>
           )}

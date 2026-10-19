@@ -112,7 +112,7 @@ export default function MowersPage() {
                 {mower.photoUrl ? (
                   <img src={mower.photoUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
                 ) : (
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
+                  <div aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
                     {(mower.name?.charAt(0) ?? '?').toUpperCase()}
                   </div>
                 )}

@@ -110,15 +110,15 @@ export default function UserProfileEditPage() {
         <h2 className="display-font text-lg font-semibold">Profile picture</h2>
         <div className="mt-4 flex items-center gap-4">
           {photoUrl ? (
-            <img src={photoUrl} alt="" className="h-20 w-20 rounded-full object-cover" />
+            <img src={photoUrl} alt="Your current profile picture" className="h-20 w-20 rounded-full object-cover" />
           ) : (
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--accent-soft)] text-2xl text-[var(--accent)]">
+            <div aria-hidden="true" className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--accent-soft)] text-2xl text-[var(--accent)]">
               {(name?.charAt(0) ?? '?').toUpperCase()}
             </div>
           )}
-          <label className="cursor-pointer rounded-md border border-[var(--accent)] px-3 py-1.5 text-sm text-[var(--accent)] hover:bg-[var(--accent-soft)]">
+          <label className="cursor-pointer rounded-md border border-[var(--accent)] px-3 py-1.5 text-sm text-[var(--accent)] hover:bg-[var(--accent-soft)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--accent)]">
             {uploading ? 'Uploading…' : 'Change picture'}
-            <input type="file" accept="image/*" onChange={handleAvatar} className="hidden" disabled={uploading} />
+            <input type="file" accept="image/*" onChange={handleAvatar} className="sr-only" disabled={uploading} />
           </label>
         </div>
       </div>

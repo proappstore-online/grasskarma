@@ -144,9 +144,9 @@ export default function DashboardPage() {
           {members.map((m) => (
             <li key={m.id} className="flex items-center gap-3 rounded-md border border-[var(--line)] p-3">
               {m.photoUrl ? (
-                <img src={m.photoUrl} alt={m.name ?? ''} className="h-10 w-10 rounded-full object-cover" />
+                <img src={m.photoUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
               ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
+                <div aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
                   {(m.name?.charAt(0) ?? '?').toUpperCase()}
                 </div>
               )}

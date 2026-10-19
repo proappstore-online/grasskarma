@@ -33,7 +33,7 @@ export default function UserProfilePage() {
           {user.photoUrl ? (
             <img src={user.photoUrl} alt="" className="h-20 w-20 rounded-full object-cover" />
           ) : (
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--accent-soft)] text-2xl font-semibold text-[var(--accent)]">
+            <div aria-hidden="true" className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--accent-soft)] text-2xl font-semibold text-[var(--accent)]">
               {(user.name?.charAt(0) ?? '?').toUpperCase()}
             </div>
           )}
@@ -45,7 +45,7 @@ export default function UserProfilePage() {
             </p>
             {rating && rating.count > 0 && (
               <p className="mt-2 text-sm text-[var(--ink)]">
-                ★ {rating.average.toFixed(1)} from {rating.count} review{rating.count === 1 ? '' : 's'}
+                <span aria-hidden="true">★ </span>{rating.average.toFixed(1)} average from {rating.count} review{rating.count === 1 ? '' : 's'}
               </p>
             )}
           </div>

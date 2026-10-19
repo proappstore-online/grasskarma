@@ -54,9 +54,9 @@ export default function ShareHirePage() {
             <li key={m.id} className="rounded-lg border border-[var(--line)] bg-[var(--glass)] p-5">
               <div className="flex items-center gap-3">
                 {m.photoUrl ? (
-                  <img src={m.photoUrl} alt={m.name ?? ''} className="h-12 w-12 rounded-full object-cover" />
+                  <img src={m.photoUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
                 ) : (
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
+                  <div aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
                     {(m.name?.charAt(0) ?? '?').toUpperCase()}
                   </div>
                 )}
@@ -84,6 +84,7 @@ export default function ShareHirePage() {
               <div className="mt-4 flex gap-2">
                 <button
                   onClick={() => void handleContact(m.id)}
+                  aria-label={`Email ${m.name ?? 'this mower'}`}
                   disabled={contacting === m.id}
                   className="flex-1 rounded-md bg-[var(--accent)] px-3 py-1.5 text-center text-sm font-medium text-[var(--on-accent)] hover:opacity-90 disabled:opacity-50"
                 >
@@ -91,6 +92,7 @@ export default function ShareHirePage() {
                 </button>
                 <Link
                   to={user?.role === 'mower' ? `/mower/${m.id}` : `/app/user/${m.id}`}
+                  aria-label={`View ${m.name ?? 'this mower'}'s profile`}
                   className="flex-1 rounded-md border border-[var(--accent)] px-3 py-1.5 text-center text-sm text-[var(--accent)] hover:bg-[var(--accent-soft)]"
                 >
                   View profile

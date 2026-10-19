@@ -82,6 +82,7 @@ export default function AdminUsersPage() {
           <button
             key={f}
             onClick={() => setFilter(f)}
+            aria-pressed={filter === f}
             className={`rounded-md px-3 py-1 text-sm ${
               filter === f
                 ? 'bg-[var(--accent)] text-[var(--on-accent)]'
@@ -131,6 +132,7 @@ export default function AdminUsersPage() {
                 <td className="px-4 py-3 text-right">
                   <button
                     onClick={() => void handleDelete(u.id)}
+                    aria-label={`Delete ${u.name ?? u.email ?? 'unnamed user'}`}
                     disabled={updatingId === u.id}
                     className="text-xs text-[var(--error)] hover:underline disabled:opacity-50"
                   >

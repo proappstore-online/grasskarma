@@ -79,6 +79,7 @@ export default function AdminGroupsPage() {
           <button
             key={f}
             onClick={() => setFilter(f)}
+            aria-pressed={filter === f}
             className={`rounded-md px-3 py-1 text-sm ${
               filter === f
                 ? 'bg-[var(--accent)] text-[var(--on-accent)]'
@@ -126,6 +127,7 @@ export default function AdminGroupsPage() {
                 <td className="px-4 py-3 text-right">
                   <button
                     onClick={() => void handleDelete(g.id)}
+                    aria-label={`Delete ${g.name}`}
                     disabled={busyId === g.id}
                     className="text-xs text-[var(--error)] hover:underline disabled:opacity-50"
                   >
