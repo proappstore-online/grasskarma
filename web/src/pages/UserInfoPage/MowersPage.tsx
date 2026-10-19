@@ -142,7 +142,7 @@ export default function MowersPage() {
                 <div className="flex gap-2">
                   <Link
                     to={`/mower/${mower.id}`}
-                    className="rounded-md border border-[var(--accent)] px-3 py-1.5 text-sm text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+                    className="inline-flex min-h-11 items-center rounded-md border border-[var(--accent)] px-3 py-1.5 text-sm text-[var(--accent)] hover:bg-[var(--accent-soft)]"
                   >
                     Profile
                   </Link>

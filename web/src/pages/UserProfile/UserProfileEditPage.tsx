@@ -116,7 +116,7 @@ export default function UserProfileEditPage() {
               {(name?.charAt(0) ?? '?').toUpperCase()}
             </div>
           )}
-          <label className="cursor-pointer rounded-md border border-[var(--accent)] px-3 py-1.5 text-sm text-[var(--accent)] hover:bg-[var(--accent-soft)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--accent)]">
+          <label className="inline-flex min-h-11 cursor-pointer items-center rounded-md border border-[var(--accent)] px-3 py-1.5 text-sm text-[var(--accent)] hover:bg-[var(--accent-soft)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--accent)]">
             {uploading ? 'Uploading…' : 'Change picture'}
             <input type="file" accept="image/*" onChange={handleAvatar} className="sr-only" disabled={uploading} />
           </label>

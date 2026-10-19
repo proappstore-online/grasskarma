@@ -94,7 +94,7 @@ export default function AdminUsersPage() {
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--glass)]">
+      <div className="overflow-x-auto rounded-lg border border-[var(--line)] bg-[var(--glass)]">
         <table className="w-full text-sm">
           <thead className="border-b border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
             <tr>

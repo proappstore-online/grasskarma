@@ -89,10 +89,10 @@ export default function AdminUserDetailPage() {
             {(user.name?.charAt(0) ?? '?').toUpperCase()}
           </div>
         )}
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <h1 className="display-font text-2xl font-bold">{user.name ?? 'Unnamed'}</h1>
-          <p className="text-sm text-[var(--muted)]">{user.email ?? '—'}</p>
-          <p className="font-mono mt-1 text-xs text-[var(--muted)]">{user.id}</p>
+          <p className="text-sm text-[var(--muted)] wrap-anywhere">{user.email ?? '—'}</p>
+          <p className="font-mono mt-1 text-xs text-[var(--muted)] wrap-anywhere">{user.id}</p>
         </div>
       </div>
 
@@ -145,7 +145,7 @@ export default function AdminUserDetailPage() {
           {user.streetGroupId && (
             <>
               <dt className="text-[var(--muted)]">Street group</dt>
-              <dd className="font-mono text-xs">{user.streetGroupId}</dd>
+              <dd className="font-mono text-xs wrap-anywhere">{user.streetGroupId}</dd>
             </>
           )}
           <dt className="text-[var(--muted)]">Created</dt>

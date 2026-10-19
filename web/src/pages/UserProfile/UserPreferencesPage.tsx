@@ -29,7 +29,7 @@ export default function UserPreferencesPage() {
         <p className="mt-1 text-xs text-[var(--muted)]">Theme</p>
         <div className="mt-3 flex gap-3">
           {(['light', 'dark'] as Theme[]).map((t) => (
-            <label key={t} className="flex cursor-pointer items-center gap-2 text-sm">
+            <label key={t} className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
               <input
                 type="radio"
                 name="theme"

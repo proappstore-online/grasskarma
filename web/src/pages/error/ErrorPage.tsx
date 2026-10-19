@@ -6,7 +6,7 @@ export function ErrorPage() {
     <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
       <h1 className="display-font text-3xl font-bold">Something went wrong</h1>
       <p className="text-[var(--muted)]">{err?.statusText ?? err?.message ?? 'Unknown error.'}</p>
-      <Link to="/" className="rounded-2xl bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-[var(--on-accent)]">
+      <Link to="/" className="inline-flex min-h-11 items-center rounded-2xl bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-[var(--on-accent)]">
         Back to start
       </Link>
     </div>

@@ -63,7 +63,7 @@ export function MainLayout() {
   }, [isMenuOpen])
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `rounded-md px-3 py-1.5 text-sm font-medium ${isActive ? 'bg-[var(--accent)] text-[var(--on-accent)]' : 'text-[var(--ink)] hover:bg-[var(--accent-soft)]'}`
+    `inline-flex min-h-11 items-center rounded-md px-3 py-1.5 text-sm font-medium ${isActive ? 'bg-[var(--accent)] text-[var(--on-accent)]' : 'text-[var(--ink)] hover:bg-[var(--accent-soft)]'}`
 
   const navigation = (
     <>
@@ -137,7 +137,7 @@ export function MainLayout() {
       </a>
       <header className="sticky top-0 z-10 border-b border-[var(--line)] bg-[var(--glass)] backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
-          <Link to={base} className="display-font text-xl font-bold">
+          <Link to={base} className="display-font inline-flex min-h-11 items-center text-xl font-bold">
             GrassKarma
           </Link>
           {isMobile ? (
@@ -148,7 +148,7 @@ export function MainLayout() {
               aria-expanded={isMenuOpen}
               aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
               onClick={() => setIsMenuOpen((open) => !open)}
-              className="rounded-md p-2 text-[var(--ink)] hover:bg-[var(--accent-soft)]"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-2 text-[var(--ink)] hover:bg-[var(--accent-soft)]"
             >
               <svg aria-hidden="true" viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <path d="M4 7h16M4 12h16M4 17h16" />

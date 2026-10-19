@@ -39,7 +39,7 @@ export default function UserProfilePage() {
           )}
           <div className="min-w-0 flex-1">
             <h1 className="display-font truncate text-2xl font-bold">{user.name ?? 'Unnamed'}</h1>
-            {user.email && <p className="text-sm text-[var(--muted)]">{user.email}</p>}
+            {user.email && <p className="text-sm text-[var(--muted)] wrap-anywhere">{user.email}</p>}
             <p className="mt-1 inline-block rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-xs text-[var(--accent)]">
               {user.role}
             </p>
