@@ -1,0 +1,12 @@
+{
+  "name": "grasskarma-smoke",
+  "private": true,
+  "type": "module",
+  "description": "Live post-deploy smoke tests. The deploy workflow runs them against production after every deploy (#27).",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.57.0"
+  }
+}

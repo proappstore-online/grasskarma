@@ -150,13 +150,31 @@ jobs:
       - name: Install Playwright browser
         working-directory: e2e
         run: npx playwright install --with-deps chromium
-      - name: Run E2E against the live app
+      - name: Mint the SMOKE TEST ACCOUNT session (keyless — GitHub OIDC → platform)
+        env:
+          FALLBACK_SESSION: ${{ secrets.PAS_E2E_SESSION_TOKEN }}
+        run: |
+          # SMOKE TEST ACCOUNT: a platform-admin grant maps this repo + workflow
+          # to one dedicated smoke-test account (see e2e/README.md). Without a
+          # grant, fall back to the PAS_E2E_SESSION_TOKEN secret; with neither,
+          # the signed-in smoke flows fail with "SMOKE SETUP MISSING".
+          OIDC=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://api.proappstore.online" | jq -r '.value')
+          SESSION=$(curl -sS -X POST https://api.proappstore.online/v1/auth/exchange/oidc \
+            -H "Authorization: Bearer $OIDC" | jq -r '.sessionToken // empty')
+          if [ -n "$SESSION" ]; then echo "Minted a smoke-account session from the OIDC grant"
+          elif [ -n "$FALLBACK_SESSION" ]; then SESSION="$FALLBACK_SESSION"; echo "No OIDC grant; using PAS_E2E_SESSION_TOKEN"
+          else echo "::warning::No OIDC session grant and no PAS_E2E_SESSION_TOKEN; signed-in smoke flows will fail"; fi
+          if [ -n "$SESSION" ]; then
+            echo "::add-mask::$SESSION"
+            echo "E2E_SESSION_TOKEN=$SESSION" >> "$GITHUB_ENV"
+          fi
+      - name: Live smoke tests — sign-in, street group, book a mow
         id: e2e
         continue-on-error: true
         working-directory: e2e
         env:
           E2E_BASE_URL: https://${{ github.event.repository.name }}.proappstore.online
-          E2E_SESSION_TOKEN: ${{ secrets.PAS_E2E_SESSION_TOKEN }}
         run: npx playwright test
       - name: Publish test results (kb.proappstore.online/<app>/.e2e/summary.json)
         if: always()
@@ -174,6 +192,19 @@ jobs:
             fs.writeFileSync("summary.json", JSON.stringify({ ranAt:new Date().toISOString(), passed:s.expected||0, failed:s.unexpected||0, flaky:s.flaky||0, skipped:s.skipped||0, ok:(s.unexpected||0)===0, specs }));
           '
           [ -n "$INTERNAL_TOKEN" ] && curl -fsS -X PUT "https://kb.proappstore.online/_ingest/$APP/.e2e/summary.json" -H "x-internal-token: $INTERNAL_TOKEN" --data-binary @summary.json >/dev/null && echo "results → kb.proappstore.online/$APP/.e2e/summary.json" || echo "skipped results upload (no INTERNAL_TOKEN)"
-      - name: Fail the run if E2E failed (bounces the ticket to Dev)
+      - name: Fail the run if a smoke flow broke (bounces the ticket to Dev)
         if: steps.e2e.outcome != 'success'
-        run: echo "::error::E2E tests failed — see the results above" && exit 1
+        working-directory: e2e
+        run: |
+          # Name each broken flow: test titles start with [sign-in],
+          # [street group] or [book a mow].
+          node -e '
+            const fs=require("fs"); let r={}; try{ r=JSON.parse(fs.readFileSync("results.json","utf8")); }catch{}
+            const failed=[];
+            const walk=(su=[])=>su.forEach(x=>{ (x.specs||[]).forEach(sp=>{ if(sp.ok===false){ const e=((sp.tests||[])[0]?.results||[]).map(t=>t.error?.message).find(Boolean)||""; failed.push(sp.title+(e?" — "+e.split("\n")[0]:"")); } }); walk(x.suites||[]); });
+            walk(r.suites||[]);
+            (r.errors||[]).forEach(e=>failed.push((e.message||"").split("\n")[0]));
+            if(!failed.length) failed.push("the smoke run did not complete; see the log above");
+            failed.forEach(t=>console.log("::error title=Live smoke test failed::"+t));
+          '
+          exit 1
