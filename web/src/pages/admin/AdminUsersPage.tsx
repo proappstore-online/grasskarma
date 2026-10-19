@@ -115,6 +115,7 @@ export default function AdminUsersPage() {
                 </td>
                 <td className="px-4 py-3">
                   <select
+                    aria-label={`Role for ${u.name ?? u.email ?? 'unnamed user'}`}
                     value={u.role ?? ''}
                     onChange={(e) => void handleRoleChange(u.id, e.target.value as Role)}
                     disabled={updatingId === u.id}

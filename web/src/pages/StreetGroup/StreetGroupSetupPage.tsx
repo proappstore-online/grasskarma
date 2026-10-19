@@ -156,8 +156,9 @@ export default function StreetGroupSetupPage() {
 
       <div className="space-y-4 rounded-lg border border-[var(--line)] bg-[var(--glass)] p-5">
         <div>
-          <label className="mb-1 block text-sm font-medium">Suburb</label>
+          <label htmlFor="group-suburb" className="mb-1 block text-sm font-medium">Suburb</label>
           <input
+            id="group-suburb"
             type="text"
             value={suburb}
             onChange={(e) => setSuburb(e.target.value)}
@@ -165,8 +166,9 @@ export default function StreetGroupSetupPage() {
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium">Postcode</label>
+          <label htmlFor="group-postcode" className="mb-1 block text-sm font-medium">Postcode</label>
           <input
+            id="group-postcode"
             type="text"
             value={postcode}
             onChange={(e) => setPostcode(e.target.value)}
@@ -206,8 +208,9 @@ export default function StreetGroupSetupPage() {
               Each street can only have one group. If you see your street above, please join it instead.
             </p>
             <div>
-              <label className="mb-1 block text-sm font-medium">Street name</label>
+              <label htmlFor="group-street-name" className="mb-1 block text-sm font-medium">Street name</label>
               <input
+                id="group-street-name"
                 type="text"
                 value={streetName}
                 onChange={(e) => setStreetName(e.target.value)}

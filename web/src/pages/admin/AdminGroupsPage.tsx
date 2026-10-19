@@ -114,6 +114,7 @@ export default function AdminGroupsPage() {
                 <td className="px-4 py-3">{g.memberIds.length}</td>
                 <td className="px-4 py-3">
                   <select
+                    aria-label={`Status for ${g.name}`}
                     value={g.status}
                     onChange={(e) => void handleStatus(g.id, e.target.value as StreetGroupStatus)}
                     disabled={busyId === g.id}

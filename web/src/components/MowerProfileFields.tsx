@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import type { MowerProfileDraft } from '../lib/mowerProfileForm'
 
 type FieldProps = {
@@ -18,10 +19,12 @@ export function LabeledField({
   inputMode,
   maxLength,
 }: FieldProps) {
+  const id = useId()
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium">{label}</label>
+      <label htmlFor={id} className="mb-1 block text-sm font-medium">{label}</label>
       <input
+        id={id}
         type={type}
         value={value}
         inputMode={inputMode}
@@ -39,10 +42,12 @@ export function LabeledTextArea({
   onChange,
   rows = 4,
 }: FieldProps & { rows?: number }) {
+  const id = useId()
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium">{label}</label>
+      <label htmlFor={id} className="mb-1 block text-sm font-medium">{label}</label>
       <textarea
+        id={id}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         rows={rows}
