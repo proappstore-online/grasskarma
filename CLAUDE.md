@@ -31,12 +31,13 @@ All timestamps are epoch-millis integers. Map row ↔ domain in the matching `we
 
 `web/src/lib/app.ts` exports the `app` SDK instance + `dbQuery` / `dbExec` helpers. Each area has its own file:
 
-- `users.ts` — `getMe`, `getUser`, `listUsers({ role?, suburb?, postcode? })`, `createUser`, `updateUser`, `deleteOwnAccount`, plus server-guarded admin helpers `adminSetRole`, `adminDeleteUser`. Account deletion uses one atomic cleanup action: users may target only themselves, while platform admins may target any user.
-- `streetGroups.ts` — `listGroups({ status, suburb, postcode, adminId, memberId, mowerId })`, `getGroup`, `createGroup`, `updateGroup`, `addMember/removeMember/addAdmin/removeAdmin`, `deleteGroup`, `createGroupInterest`, `listGroupInterests`, `deleteGroupInterest`.
+- `users.ts` — `getMe`, `getUser`, `listGroupMembers(groupId)` (one round trip for a whole group), `listUsers({ role?, suburb?, postcode? })`, `createUser`, `updateUser`, `deleteOwnAccount`, plus server-guarded admin helpers `adminSetRole`, `adminDeleteUser`. Account deletion uses one atomic cleanup action: users may target only themselves, while platform admins may target any user.
+- `streetGroups.ts` — `listGroupsForMower()` and `listGroupsByLocation(suburb, postcode)` (indexed; use these on hot paths), `listGroups({ status, suburb, postcode, adminId, memberId, mowerId })` (reads every group: admin and forming lists only), `getGroup`, `createGroup`, `updateGroup`, `addMember/removeMember/addAdmin/removeAdmin`, `deleteGroup`, `createGroupInterest`, `listGroupInterests`, `deleteGroupInterest`.
 - `mowerInterests.ts` — `listInterestsForGroup/Mower`, `createMowerInterest`, `deleteMowerInterest`, `castVote(interestId, voterId, vote: -1|1)`, `listVotes`, `voteTally`.
 - `schedules.ts` — `listSchedules(groupId)`, `listSchedulesForMower`, `createSchedule`, `updateSchedule`, `markCompleted`, `deleteSchedule`.
 - `reviews.ts` — `createReview`, `listReviews(mowerId)`, `updateReview`, `deleteReview`, `averageRating`.
 - `history.ts` — `recordHistory`, `listHistory(mowerId)`.
+- `reminders.ts`, `mowCompletion.ts`, `mowRatings.ts` — #29: in-app mow reminders + opt-out, mower marks done with an after-photo (`complete_schedule`), member confirmation + 1-5 rating (`confirm_mow`).
 - `photos.ts` — user-scoped public avatar/lawn uploads, replacement cleanup, and a durable D1 cleanup queue. Uploads use `app.storage.uploadUserPublic`; never use app-owner `uploadPublic` for user photos. A replacement persists its new database reference before the old object is queued, and account deletion queues every tracked object for idempotent retry.
 
 Pages and admin operations always go through these — never call `app.db.*` directly in a page.
@@ -54,6 +55,7 @@ Pages and admin operations always go through these — never call `app.db.*` dir
 - **Google + GitHub OAuth only.** Source also supported email/password + Facebook. `AuthGate` calls `app.auth.signIn(provider)` directly because `useProGate`'s `signIn` is GitHub-only.
 - **MUI dropped** in favour of tailwind + the brand vars in `web/src/index.css` (`--accent` teal `#297373`, darkened from the source `#2D7D7D` for AA contrast, `--secondary` green `#5CB85C`).
 - **Minimal tests.** Vitest regression tests for the auth path only (`pnpm test` = typecheck + `vitest run`); broader coverage deferred per ship-and-test-in-prod stance.
+- **Performance budgets.** `perf-budgets.json` (#31): gzipped bundle (`scripts/check-bundle-budget.mjs`), hot-query plans/time/rows on a city-scale seed (`web/src/lib/queryBudgets.test.ts`), and exact server round trips per hot page (`e2e/a11y/query-count.spec.ts`). All run in the pre-deploy gate. A hot read must not full-SCAN a growing table; a page must not call an action once per list item. How to change a budget: `README.md` → Performance budgets.
 - **Accessibility gate.** `deploy.yml`'s `a11y` job runs `e2e/playwright.a11y.config.ts` (axe WCAG 2.2 AA, no horizontal scroll at 360/414px, 44px tap targets, keyboard walkthroughs) against a local preview with the platform mocked, and blocks the deploy on failure. New routes go in `e2e/a11y/a11y.spec.ts`; new actions need a handler in `e2e/a11y/platform.ts`. See `e2e/README.md`.
 
 ## Files of note

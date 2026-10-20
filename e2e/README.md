@@ -67,6 +67,7 @@ test). No session or network is needed, so a regression blocks the deploy.
 |---|---|
 | `a11y.spec.ts` | Every route, per role, at 360px, 414px and 1280px plus a dark-theme pass: axe-core WCAG 2.2 A/AA + best-practice violations, no horizontal page scroll, and (mobile) every button, field and standalone link at least 44px tall. Links inside running text are exempt. |
 | `keyboard.spec.ts` | Tab/Enter-only walkthroughs: sign-in, skip link, mobile menu (incl. Escape), join a group, book a mow, approve a join request, edit and save a profile. |
+| `query-count.spec.ts` | Server round trips per hot page load against `perf-budgets.json` `page_actions`, plus a check that the client dashboard's calls do not grow with group size (#31). |
 
 Run locally from this directory after `pnpm build` at the repo root:
 
