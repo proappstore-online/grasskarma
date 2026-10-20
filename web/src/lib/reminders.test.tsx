@@ -100,7 +100,7 @@ describe('reminder opt-out actions', () => {
 function schedule(overrides: Partial<Schedule>): Schedule {
   return {
     id: 's', groupId: 'g', dayOfWeek: null, startTime: null, mowerId: 'm', status: 'planned',
-    dueDate: null, completedAt: null, createdAt: 0, updatedAt: 0, ...overrides,
+    dueDate: null, completedAt: null, afterPhotoUrl: null, createdAt: 0, updatedAt: 0, ...overrides,
   }
 }
 

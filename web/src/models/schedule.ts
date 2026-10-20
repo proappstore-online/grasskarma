@@ -11,6 +11,8 @@ export interface Schedule {
   status: ScheduleStatus
   dueDate: number | null
   completedAt: number | null
+  /** Public URL of the mower's optional after-photo, once the mow is done (#29). */
+  afterPhotoUrl: string | null
   createdAt: number
   updatedAt: number
 }

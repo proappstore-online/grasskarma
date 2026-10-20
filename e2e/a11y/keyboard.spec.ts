@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { mockPlatform } from './platform'
 
@@ -135,4 +136,21 @@ test('[keyboard] mow reminder: the banner shows and reminders can be turned off'
   await tabTo(page, banner.getByRole('button', { name: 'Turn off reminders' }))
   await page.keyboard.press('Enter')
   await expect.poll(() => platform.mutations.map((m) => m.name)).toContain('set_reminder_opt_out')
+})
+
+test('[keyboard] mark a mow done: open the form, skip the photo, confirm', async ({ page, context }) => {
+  const platform = await mockPlatform(context, 'mower')
+  await page.goto('/mower')
+  await ready(page)
+  await tabTo(page, page.getByRole('button', { name: /^Mark as done: / }).first())
+  await page.keyboard.press('Enter')
+  // Opening the form moves focus to its first field, the optional photo.
+  await expect(page.getByLabel('After photo (optional)')).toBeFocused()
+  const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze()
+  expect(violations.map((v) => v.id)).toEqual([])
+
+  await tabTo(page, page.getByRole('button', { name: 'Confirm done' }))
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('status').filter({ hasText: /^Marked done: / })).toBeVisible()
+  expect(platform.mutations.find((m) => m.name === 'complete_schedule')?.params).toMatchObject({ schedule_id: 's-1', group_id: 'g-1', after_photo_key: null })
 })

@@ -55,7 +55,7 @@ export const ACTION_MANIFEST = {
   list_schedules_for_mower: { operation: 'query', params: { limit: optional(integer()) } },
   create_schedule: { operation: 'execute', params: { id: string(), group_id: string(), day_of_week: optional(integer()), start_time: optional(string()), mower_id: optional(string()), due_date: optional(integer()) } },
   update_schedule: { operation: 'execute', params: { id: string(), day_of_week: optional(integer()), set_day_of_week: optional(integer()), start_time: optional(string()), set_start_time: optional(integer()), mower_id: optional(string()), set_mower_id: optional(integer()), status: optional(values(SCHEDULE_STATUSES)), set_status: optional(integer()), due_date: optional(integer()), set_due_date: optional(integer()), completed_at: optional(integer()), set_completed_at: optional(integer()) } },
-  complete_schedule: { operation: 'batch', params: { schedule_id: string(), group_id: string(), history_id: string(), street_name: optional(string()), area_sqm: optional(integer()), duration_min: optional(integer()), income: optional(integer()), date: integer() } },
+  complete_schedule: { operation: 'batch', params: { schedule_id: string(), group_id: string(), history_id: string(), after_photo_key: optional(string()), street_name: optional(string()), area_sqm: optional(integer()), duration_min: optional(integer()), income: optional(integer()), date: integer() } },
   delete_schedule: { operation: 'execute', params: { id: string() } },
   create_review: { operation: 'execute', params: { id: string(), mower_id: string(), group_id: optional(string()), schedule_id: optional(string()), rating: integer(), comment: optional(string()) } },
   list_reviews: { operation: 'query', params: { mower_id: string() } },

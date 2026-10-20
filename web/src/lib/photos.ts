@@ -33,7 +33,7 @@ async function recordPhoto(key: string): Promise<void> {
   await x('record_photo_object', { storage_key: key })
 }
 
-async function uploadPhoto(category: 'avatars' | 'lawns', name: string, file: File): Promise<string> {
+async function uploadPhotoObject(category: 'avatars' | 'lawns', name: string, file: File): Promise<{ key: string; url: string }> {
   const callerId = requireAuthenticatedCaller()
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
   const result = await app.storage.uploadUserPublic(`${category}/${name}-${crypto.randomUUID()}.${ext}`, file, file.type || 'image/jpeg')
@@ -46,7 +46,19 @@ async function uploadPhoto(category: 'avatars' | 'lawns', name: string, file: Fi
     await deletePhoto(result.key).catch(() => undefined)
     throw error
   }
-  return app.storage.publicUrl(result.key)
+  return { key: result.key, url: app.storage.publicUrl(result.key) }
+}
+
+async function uploadPhoto(category: 'avatars' | 'lawns', name: string, file: File): Promise<string> {
+  return (await uploadPhotoObject(category, name, file)).url
+}
+
+/**
+ * Upload a mow's after-photo and return its storage key. The completion
+ * action accepts only a key the mower has recorded under u/<id>/lawns/ (#29).
+ */
+export async function uploadMowAfterPhoto(file: File): Promise<string> {
+  return (await uploadPhotoObject('lawns', 'after', file)).key
 }
 
 export async function uploadAvatar(file: File): Promise<string> {

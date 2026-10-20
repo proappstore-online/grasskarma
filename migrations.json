@@ -23,6 +23,10 @@
     {
       "name": "0006_reminder_opt_out",
       "sql": "CREATE TABLE IF NOT EXISTS reminder_opt_out ( user_id TEXT PRIMARY KEY, created_at INTEGER NOT NULL );"
+    },
+    {
+      "name": "0007_mow_completions",
+      "sql": "CREATE TABLE IF NOT EXISTS mow_completions ( schedule_id TEXT PRIMARY KEY, mower_id TEXT NOT NULL, after_photo_key TEXT, completed_at INTEGER NOT NULL ); CREATE INDEX IF NOT EXISTS idx_mow_completions_mower ON mow_completions(mower_id);"
     }
   ]
 }

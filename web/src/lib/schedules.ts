@@ -1,3 +1,4 @@
+import { app } from './app'
 import { ensureMigrated } from './db'
 import { q, xOne, xBatch } from './actions'
 import type { ScheduleRow } from './db'
@@ -35,6 +36,7 @@ function rowToSchedule(r: ScheduleRow): Schedule {
     status: r.status,
     dueDate: r.due_date,
     completedAt: r.completed_at,
+    afterPhotoUrl: r.after_photo_key ? app.storage.publicUrl(r.after_photo_key) : null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   }
@@ -83,6 +85,7 @@ export async function createSchedule(input: ScheduleCreate): Promise<Schedule> {
     status: 'planned',
     dueDate: input.dueDate ?? null,
     completedAt: null,
+    afterPhotoUrl: null,
     createdAt: now,
     updatedAt: now,
   }
@@ -131,6 +134,8 @@ export interface ScheduleCompletion {
   areaSqm?: number | null
   durationMin?: number | null
   income?: number | null
+  /** Storage key of an after-photo already uploaded and recorded by this mower. */
+  afterPhotoKey?: string | null
 }
 
 /** Complete an assigned job and add its mower history entry atomically. */
@@ -140,6 +145,7 @@ export async function completeSchedule(input: ScheduleCompletion): Promise<void>
     schedule_id: input.scheduleId,
     group_id: input.groupId,
     history_id: crypto.randomUUID(),
+    after_photo_key: input.afterPhotoKey ?? null,
     street_name: input.streetName ?? null,
     area_sqm: input.areaSqm ?? null,
     duration_min: input.durationMin ?? null,

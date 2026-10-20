@@ -207,6 +207,23 @@ export const MIGRATIONS = [
       );
     `,
   },
+  {
+    name: '0007_mow_completions',
+    // One row per completed mow (#29). A separate table rather than new
+    // schedules columns: migrations are additive-only and every schedule read
+    // goes through the column-listing schedules_compatible view. Step 3's
+    // resident confirmations attach to this row. The optional after-photo is
+    // a tracked object in the mower's own u/<id>/lawns/ namespace.
+    sql: `
+      CREATE TABLE IF NOT EXISTS mow_completions (
+        schedule_id     TEXT PRIMARY KEY,
+        mower_id        TEXT NOT NULL,
+        after_photo_key TEXT,
+        completed_at    INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_mow_completions_mower ON mow_completions(mower_id);
+    `,
+  },
 ]
 
 let migrated = false
@@ -303,6 +320,8 @@ export interface ScheduleRow {
   completed_at: number | null
   created_at: number
   updated_at: number
+  /** From mow_completions, joined by the schedule reads. */
+  after_photo_key?: string | null
 }
 
 export interface MowerReviewRow {

@@ -10,7 +10,7 @@ const schedule = (id: string, dueDate: number | null, status: Schedule['status']
   mowerId: 'mower-1',
   status,
   dueDate,
-  completedAt: null,
+  completedAt: null, afterPhotoUrl: null,
   createdAt: 1,
   updatedAt: 1,
 })

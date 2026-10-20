@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { listGroups } from '../../lib/streetGroups'
-import { completeSchedule, listSchedulesForMower, type ScheduleCompletion } from '../../lib/schedules'
+import { listSchedulesForMower, type ScheduleCompletion } from '../../lib/schedules'
 import { listHistory } from '../../lib/history'
 import { averageRating } from '../../lib/reviews'
+import { MarkMowDone } from '../../components/MarkMowDone'
+import { markMowDone } from '../../lib/mowCompletion'
+import { ActionRefusedError } from '../../lib/actions'
 import { MowReminderBanner } from '../../components/MowReminderBanner'
 import { useAsyncResource } from '../../hooks/useAsyncResource'
 import type { Schedule, StreetGroup } from '../../models'
@@ -27,6 +30,12 @@ export function upcomingSchedules(schedules: Schedule[]): Schedule[] {
  * The server authorizes completion by the schedule's own mower and group, so a
  * job stays completable even when its group is no longer assigned to the mower.
  */
+/** How a mow is named in the mower's list and messages. */
+export function mowLabel(schedule: Schedule): string {
+  const date = schedule.dueDate ? new Date(schedule.dueDate).toLocaleDateString() : 'Unscheduled'
+  return schedule.startTime ? `${date} · ${schedule.startTime}` : date
+}
+
 export function completionForSchedule(schedule: Schedule, groups: StreetGroup[]): ScheduleCompletion {
   const group = groups.find((candidate) => candidate.id === schedule.groupId)
   return {
@@ -41,6 +50,7 @@ export default function MowerDashboardPage() {
   const navigate = useNavigate()
   const [completing, setCompleting] = useState<string | null>(null)
   const [completionError, setCompletionError] = useState<string | null>(null)
+  const [completionMessage, setCompletionMessage] = useState<string | null>(null)
 
   useEffect(() => {
     if (user && !isProfileComplete(user.mowerProfile)) {
@@ -48,7 +58,7 @@ export default function MowerDashboardPage() {
     }
   }, [user, navigate])
 
-  const { data, loading, error, updateData } = useAsyncResource(async () => {
+  const { data, loading, error, reload } = useAsyncResource(async () => {
     const [assigned, schedules, history, rating] = await Promise.all([
       listGroups({ mowerId: user!.id }),
       listSchedulesForMower(),
@@ -62,24 +72,25 @@ export default function MowerDashboardPage() {
   const history = data?.history ?? []
   const rating = data?.rating ?? null
 
-  const complete = async (schedule: Schedule) => {
+  const complete = async (schedule: Schedule, photo: File | null) => {
     setCompleting(schedule.id)
     setCompletionError(null)
+    setCompletionMessage(null)
     try {
-      await completeSchedule(completionForSchedule(schedule, assigned))
-      const refreshedHistory = await listHistory(user!.id, 10)
-      updateData((current) => current && {
-        ...current,
-        history: refreshedHistory,
-        upcoming: current.upcoming.filter((item) => item.id !== schedule.id),
-      })
+      await markMowDone(completionForSchedule(schedule, assigned), photo)
+      setCompletionMessage(`Marked done: ${mowLabel(schedule)}. Residents can now confirm it.`)
     } catch (err) {
       console.error(err)
-      setCompletionError('Could not complete this job. No history record was added.')
+      setCompletionError(err instanceof ActionRefusedError
+        ? 'This mow could not be marked done: it may already be done or no longer assigned to you. The list was reloaded.'
+        : 'Could not mark this mow as done. Please try again.')
     } finally {
       setCompleting(null)
+      // Show the server's state, never an optimistic patch.
+      await reload()
     }
   }
+
 
   if (loading) return <p role="status" className="text-sm text-[var(--muted)]">Loading…</p>
   if (error) return <p role="alert" className="text-sm text-[var(--error)]">Failed to load dashboard.</p>
@@ -137,21 +148,17 @@ export default function MowerDashboardPage() {
       <div className="rounded-lg border border-[var(--line)] bg-[var(--glass)] p-5">
         <h2 className="display-font text-lg font-semibold">Upcoming mows</h2>
         {completionError && <p role="alert" className="mt-2 text-sm text-[var(--error)]">{completionError}</p>}
+        {completionMessage && <p role="status" className="mt-2 text-sm text-[var(--success)]">{completionMessage}</p>}
         {upcoming.length === 0 ? (
           <p className="mt-2 text-sm text-[var(--muted)]">No scheduled jobs.</p>
         ) : (
           <ul className="mt-3 divide-y divide-[var(--line)]">
             {upcoming.slice(0, 5).map((s) => (
-              <li key={s.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                <span>
-                  {s.dueDate ? new Date(s.dueDate).toLocaleDateString() : '—'}
-                  {s.startTime ? ` · ${s.startTime}` : ''}
-                </span>
+              <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
+                <span>{mowLabel(s)}</span>
                 <div className="flex items-center gap-3">
                   <Link to={`/mower/history`} className="inline-flex min-h-11 items-center text-xs text-[var(--accent)] hover:underline">History</Link>
-                  <button onClick={() => void complete(s)} disabled={completing === s.id} className="rounded-md bg-[var(--accent)] px-2 py-1 text-xs font-medium text-[var(--on-accent)] disabled:opacity-50">
-                    {completing === s.id ? 'Completing…' : 'Mark complete'}
-                  </button>
+                  <MarkMowDone mowLabel={mowLabel(s)} saving={completing === s.id} onConfirm={(photo) => void complete(s, photo)} />
                 </div>
               </li>
             ))}
