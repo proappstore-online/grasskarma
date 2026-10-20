@@ -1,0 +1,8 @@
+{
+  "_comment": "Performance budgets (#31). Bundle budgets are gzip-9 kilobytes of web/dist, checked by scripts/check-bundle-budget.mjs. Change a budget only with a recorded reason (README.md, 'Performance budgets').",
+  "bundle_gzip_kb": {
+    "entry_js": 140,
+    "total_js": 154,
+    "css": 6
+  }
+}

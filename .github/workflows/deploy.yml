@@ -15,7 +15,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Accessibility + mobile gate (#30): axe-core WCAG 2.2 AA, no horizontal
+  # Pre-deploy gate. Bundle and query budgets (#31, perf-budgets.json) and
+  # accessibility + mobile (#30): axe-core WCAG 2.2 AA, no horizontal
   # scroll at 360/414px, 44px tap targets, keyboard walkthroughs. Drives a
   # local preview of this commit's build with the platform mocked
   # (e2e/a11y/platform.ts), so a regression fails here and never deploys.
@@ -30,6 +31,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build
         run: pnpm build
+      - name: "Typecheck and unit tests (incl. query budgets, #31)"
+        run: pnpm test
+      - name: "Bundle size budget (perf-budgets.json, #31)"
+        run: node scripts/check-bundle-budget.mjs
       - name: Install E2E deps
         working-directory: e2e
         run: npm ci
