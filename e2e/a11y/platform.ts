@@ -137,6 +137,16 @@ function query(db: Db, me: string, name: string, p: Params): unknown[] | undefin
     case 'list_photo_cleanup_jobs': return []
     case 'list_groups': return eq(eq(eq(eq(db.groups, 'status', p.status), 'suburb', p.suburb), 'postcode', p.postcode), 'assigned_mower_id', p.mower_id)
     case 'get_group': return db.groups.filter((g) => g.id === p.id)
+    case 'list_groups_for_mower': return db.groups.filter((g) => g.assigned_mower_id === me)
+    case 'list_groups_by_location': {
+      const norm = (v: unknown) => String(v ?? '').trim().toLowerCase()
+      return db.groups.filter((g) => norm(g.suburb) === norm(p.suburb) && norm(g.postcode) === norm(p.postcode))
+    }
+    case 'list_group_members': {
+      const group = db.groups.find((g) => g.id === p.group_id)
+      const ids: string[] = group ? JSON.parse(group.member_ids) : []
+      return ids.map((id) => db.users.find((u) => u.id === id)).filter(Boolean)
+    }
     case 'find_group_by_location': return db.groups.filter((g) => g.street_name === p.street_name && g.suburb === p.suburb && g.postcode === p.postcode)
     case 'list_group_interests': return eq(db.groupInterests, 'group_id', p.group_id)
     case 'list_schedules': return withCompletion(db, me, eq(db.schedules, 'group_id', p.group_id))
@@ -176,12 +186,24 @@ export interface Platform {
   mutations: { name: string; params: Params }[]
   /** Requests this stand-in could not answer; a test fails if any appear. */
   unhandled: string[]
+  /** Every action the page called, in order: the page's server round trips (#31). */
+  calls: string[]
 }
 
-export async function mockPlatform(context: BrowserContext, persona: Persona): Promise<Platform> {
+export interface MockOptions {
+  /** Extra homeowners added to the client persona's group, to prove a page's call count does not grow with it. */
+  extraMembers?: number
+}
+
+export async function mockPlatform(context: BrowserContext, persona: Persona, { extraMembers = 0 }: MockOptions = {}): Promise<Platform> {
   const db = fixtures()
+  const g1 = db.groups.find((g) => g.id === 'g-1')!
+  for (let i = 0; i < extraMembers; i++) {
+    db.users.push(user({ id: `u-extra-${i}`, name: `Extra Neighbour ${i}`, role: 'client', street_group_id: 'g-1' }))
+    g1.member_ids = JSON.stringify([...JSON.parse(g1.member_ids), `u-extra-${i}`])
+  }
   const me = persona === 'signed-out' ? null : PERSONA_USER[persona]
-  const platform: Platform = { mutations: [], unhandled: [] }
+  const platform: Platform = { mutations: [], unhandled: [], calls: [] }
 
   // Third-party requests (fonts, analytics) are not under test and must not
   // make the run depend on the network.
@@ -207,6 +229,7 @@ export async function mockPlatform(context: BrowserContext, persona: Persona): P
 
     const action = path.match(/^\/\.pas\/api\/v1\/apps\/grasskarma\/actions\/([a-z_]+)$/)?.[1]
     if (action && request.method() === 'POST') {
+      platform.calls.push(action)
       if (!me) return route.fulfill({ status: 401, json: { error: 'not signed in' } })
       const params = ((request.postDataJSON() as { params?: Params } | null)?.params ?? {}) as Params
       // The newcomer exists as a platform identity with no GrassKarma profile

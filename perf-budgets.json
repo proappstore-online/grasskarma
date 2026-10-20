@@ -1,8 +1,44 @@
 {
-  "_comment": "Performance budgets (#31). Bundle budgets are gzip-9 kilobytes of web/dist, checked by scripts/check-bundle-budget.mjs. Change a budget only with a recorded reason (README.md, 'Performance budgets').",
+  "_comment": "Performance budgets (#31). bundle_gzip_kb: gzip-9 KB of web/dist (scripts/check-bundle-budget.mjs), measured + ~20%. query_*: hot server actions on the city-scale seed in web/src/lib/queryBudgets.test.ts. The primary query guard is the plan check there (no full SCAN of a growing table); query_ms is the median of 7 runs, set at 10x the measured median with a 1 ms floor so it catches only large regressions, not CI noise; query_max_rows is the measured row count + 20% (exactly 1 for single-row lookups). page_actions: exact server round trips (registered-action calls) per hot page load, counted by the a11y gate's platform mock (e2e/a11y/query-count.spec.ts); no headroom, so adding a call is a deliberate change. Change a budget only with a recorded reason (README.md, Performance budgets).",
   "bundle_gzip_kb": {
     "entry_js": 140,
     "total_js": 154,
     "css": 6
+  },
+  "query_ms": {
+    "get_user.fellow_member": 1,
+    "get_user.mower_profile": 1,
+    "list_group_members": 1,
+    "get_group": 1,
+    "list_groups_for_mower": 1,
+    "list_groups_by_location": 1,
+    "list_schedules": 1,
+    "list_schedules_for_mower": 2,
+    "average_rating": 1,
+    "list_reviews": 2,
+    "list_interests_for_group": 1,
+    "get_reminder_opt_out": 1
+  },
+  "query_max_rows": {
+    "get_user.fellow_member": 1,
+    "get_user.mower_profile": 1,
+    "list_group_members": 6,
+    "get_group": 1,
+    "list_groups_for_mower": 5,
+    "list_groups_by_location": 24,
+    "list_schedules": 24,
+    "list_schedules_for_mower": 96,
+    "average_rating": 1,
+    "list_reviews": 149,
+    "list_interests_for_group": 2,
+    "get_reminder_opt_out": 1
+  },
+  "page_actions": {
+    "client dashboard": 9,
+    "mower dashboard": 8,
+    "own profile": 3,
+    "public mower profile": 6,
+    "street group setup": 2,
+    "group management": 6
   }
 }
