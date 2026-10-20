@@ -63,6 +63,20 @@ export interface GroupSearch {
   limit?: number
 }
 
+/** Groups the caller is the assigned mower for, via an index (#31). */
+export async function listGroupsForMower(limit = 200): Promise<StreetGroup[]> {
+  await ensureMigrated()
+  const rows = await q<StreetGroupRow, 'list_groups_for_mower'>('list_groups_for_mower', { limit })
+  return rows.map(rowToGroup)
+}
+
+/** Groups in a suburb and postcode, via the normalized location index (#31). */
+export async function listGroupsByLocation(suburb: string, postcode: string, limit = 200): Promise<StreetGroup[]> {
+  await ensureMigrated()
+  const rows = await q<StreetGroupRow, 'list_groups_by_location'>('list_groups_by_location', { suburb: suburb.trim(), postcode: postcode.trim(), limit })
+  return rows.map(rowToGroup)
+}
+
 export async function listGroups(filter: GroupSearch = {}): Promise<StreetGroup[]> {
   await ensureMigrated()
   // status/suburb/postcode/mowerId are filtered in the registered action.

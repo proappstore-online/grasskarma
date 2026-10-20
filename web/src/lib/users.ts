@@ -44,6 +44,13 @@ export async function getMe(): Promise<User | null> {
   return getUser(u.id)
 }
 
+/** Every member of a street group in one round trip, instead of one get_user each (#31). */
+export async function listGroupMembers(groupId: string): Promise<User[]> {
+  await ensureMigrated()
+  const rows = await q<UserRow, 'list_group_members'>('list_group_members', { group_id: groupId })
+  return rows.map(rowToUser)
+}
+
 export async function getUser(id: string): Promise<User | null> {
   await ensureMigrated()
   const rows = await q<UserRow, 'get_user'>('get_user', { id })

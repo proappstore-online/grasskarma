@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { GroupLocationConflictError, listGroups, createGroup, addMember, createGroupInterest } from '../../lib/streetGroups'
+import { GroupLocationConflictError, listGroupsByLocation, createGroup, addMember, createGroupInterest } from '../../lib/streetGroups'
 import { updateUser } from '../../lib/users'
 import type { StreetGroup } from '../../models'
 
@@ -78,7 +78,7 @@ export default function StreetGroupSetupPage() {
     }
     setBusy(true)
     try {
-      const groups = await listGroups({ suburb: suburb.trim(), postcode: postcode.trim() })
+      const groups = await listGroupsByLocation(suburb, postcode)
       setExisting(groups)
       setSearched(true)
     } catch (err) {

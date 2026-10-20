@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { listGroups } from '../../lib/streetGroups'
+import { listGroupsForMower } from '../../lib/streetGroups'
 import { listSchedulesForMower, mowLabel, type ScheduleCompletion } from '../../lib/schedules'
 import { listHistory } from '../../lib/history'
 import { averageRating } from '../../lib/reviews'
@@ -60,7 +60,7 @@ export default function MowerDashboardPage() {
 
   const { data, loading, error, reload } = useAsyncResource(async () => {
     const [assigned, schedules, history, rating] = await Promise.all([
-      listGroups({ mowerId: user!.id }),
+      listGroupsForMower(),
       listSchedulesForMower(),
       listHistory(user!.id, 10),
       averageRating(user!.id),

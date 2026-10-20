@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { getGroup } from '../../lib/streetGroups'
-import { getUser } from '../../lib/users'
+import { getUser, listGroupMembers } from '../../lib/users'
 import { listSchedules, mowLabel } from '../../lib/schedules'
 import { averageRating } from '../../lib/reviews'
 import { useAsyncResource } from '../../hooks/useAsyncResource'
@@ -17,7 +17,6 @@ const MOW_STATE_PILL: Record<MowState, string> = {
   confirmed: 'bg-[var(--secondary-soft)] text-[var(--success)]',
   skipped: 'bg-[var(--accent-soft)] text-[var(--muted)]',
 }
-import type { User } from '../../models'
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -32,12 +31,12 @@ export default function DashboardPage() {
     const group = await getGroup(user!.streetGroupId!)
     if (!group) return { group: null, members: [], schedules: [], mower: null, mowerRating: null }
     const [members, schedules, mower] = await Promise.all([
-      Promise.all(group.memberIds.map((id) => getUser(id))),
+      listGroupMembers(group.id),
       listSchedules(group.id),
       group.assignedMowerId ? getUser(group.assignedMowerId) : Promise.resolve(null),
     ])
     const mowerRating = mower ? await averageRating(mower.id) : null
-    return { group, members: members.filter((member): member is User => !!member), schedules, mower, mowerRating }
+    return { group, members, schedules, mower, mowerRating }
   }, [user?.streetGroupId], { enabled: Boolean(user?.streetGroupId) })
 
   const group = data?.group ?? null

@@ -4,7 +4,7 @@
       "name": "get_user",
       "description": "Fetch one user row (public neighbourhood profile) by id",
       "operation": "query",
-      "sql": "SELECT u.id, NULL AS public_contact_email, u.name, u.photo_url, u.role, u.suburb, u.postcode, u.state, u.country, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.email END AS email, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.lat END AS lat, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.lng END AS lng, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.client_profile WHEN json_valid(u.client_profile) THEN json_remove(u.client_profile, '$.addressNumber', '$.natureStripPhotos') END AS client_profile, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.mower_profile WHEN json_valid(u.mower_profile) THEN json_remove(u.mower_profile, '$.addressNumber', '$.homeStreetName') END AS mower_profile, u.street_group_id, u.created_at, u.updated_at FROM users u WHERE u.id = :id AND (u.id = :__user_id OR u.role = 'mower' OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin') OR EXISTS (SELECT 1 FROM street_groups g WHERE EXISTS (SELECT 1 FROM json_each(g.member_ids) mm WHERE mm.value = u.id) AND (EXISTS (SELECT 1 FROM json_each(g.member_ids) c WHERE c.value = :__user_id) OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) c WHERE c.value = :__user_id))))",
+      "sql": "SELECT u.id, NULL AS public_contact_email, u.name, u.photo_url, u.role, u.suburb, u.postcode, u.state, u.country, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.email END AS email, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.lat END AS lat, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.lng END AS lng, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.client_profile WHEN json_valid(u.client_profile) THEN json_remove(u.client_profile, '$.addressNumber', '$.natureStripPhotos') END AS client_profile, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.mower_profile WHEN json_valid(u.mower_profile) THEN json_remove(u.mower_profile, '$.addressNumber', '$.homeStreetName') END AS mower_profile, u.street_group_id, u.created_at, u.updated_at FROM users u WHERE u.id = :id AND (u.id = :__user_id OR u.role = 'mower' OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin') OR EXISTS (SELECT 1 FROM street_groups g WHERE g.id IN (u.street_group_id, (SELECT me.street_group_id FROM users me WHERE me.id = :__user_id)) AND EXISTS (SELECT 1 FROM json_each(g.member_ids) mm WHERE mm.value = u.id) AND (EXISTS (SELECT 1 FROM json_each(g.member_ids) c WHERE c.value = :__user_id) OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) c WHERE c.value = :__user_id))))",
       "params": {
         "id": {
           "type": "string"
@@ -934,6 +934,50 @@
       "sql": "SELECT r.schedule_id, r.user_id, r.rating, r.comment, r.confirmed_at FROM mow_ratings r JOIN schedules s ON s.id = r.schedule_id JOIN street_groups g ON g.id = s.group_id WHERE r.schedule_id = :schedule_id AND (r.user_id = :__user_id OR s.mower_id = :__user_id OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) ORDER BY r.confirmed_at DESC",
       "params": {
         "schedule_id": {
+          "type": "string"
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_groups_for_mower",
+      "description": "Street groups the caller is the assigned mower for, newest first (uses idx_street_groups_assigned_mower)",
+      "operation": "query",
+      "sql": "SELECT * FROM street_groups_compatible WHERE assigned_mower_id = :__user_id ORDER BY updated_at DESC LIMIT :limit",
+      "params": {
+        "limit": {
+          "type": "integer",
+          "optional": true
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_groups_by_location",
+      "description": "Street groups in a suburb and postcode, trimmed and case-insensitive like the unique location index it uses",
+      "operation": "query",
+      "sql": "SELECT * FROM street_groups_compatible WHERE lower(trim(COALESCE(suburb, ''))) = lower(trim(:suburb)) AND lower(trim(COALESCE(postcode, ''))) = lower(trim(:postcode)) ORDER BY updated_at DESC LIMIT :limit",
+      "params": {
+        "suburb": {
+          "type": "string"
+        },
+        "postcode": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer",
+          "optional": true
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_group_members",
+      "description": "Every member of one street group in one query, with get_user's per-field masking; visible to the group's members and admins, its assigned mower and platform admins",
+      "operation": "query",
+      "sql": "SELECT u.id, NULL AS public_contact_email, u.name, u.photo_url, u.role, u.suburb, u.postcode, u.state, u.country, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.email END AS email, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.lat END AS lat, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.lng END AS lng, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.client_profile WHEN json_valid(u.client_profile) THEN json_remove(u.client_profile, '$.addressNumber', '$.natureStripPhotos') END AS client_profile, CASE WHEN (u.id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) THEN u.mower_profile WHEN json_valid(u.mower_profile) THEN json_remove(u.mower_profile, '$.addressNumber', '$.homeStreetName') END AS mower_profile, u.street_group_id, u.created_at, u.updated_at FROM street_groups g JOIN json_each(g.member_ids) m JOIN users u ON u.id = m.value WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.member_ids) c WHERE c.value = :__user_id) OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) c WHERE c.value = :__user_id) OR g.assigned_mower_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) ORDER BY u.created_at",
+      "params": {
+        "group_id": {
           "type": "string"
         }
       },
