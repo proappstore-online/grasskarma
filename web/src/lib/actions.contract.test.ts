@@ -16,6 +16,15 @@ const root = new URL('../../../', import.meta.url)
 const registeredTools: RegisteredTool[] = JSON.parse(readFileSync(new URL('mcp.json', root), 'utf8')).tools
 
 describe('registered action contract', () => {
+  it('scopes every statement to the caller or declares why not, as tool registration requires', () => {
+    // The platform rejects the whole mcp.json at deploy time otherwise, after
+    // the new frontend is already live (#31). Catch it in the pre-deploy gate.
+    const tools: { name: string; sql?: string; statements?: string[]; auth?: { caller_unscoped?: { reason?: string } } }[] =
+      JSON.parse(readFileSync(new URL('mcp.json', root), 'utf8')).tools
+    const unscoped = tools.filter((tool) => !(tool.statements ?? [tool.sql ?? '']).join(' ').includes(':__user_id') && !tool.auth?.caller_unscoped?.reason)
+    expect(unscoped.map((tool) => tool.name)).toEqual([])
+  })
+
   it('matches every registered action name, operation, and parameter declaration', () => {
     expect(Object.keys(ACTION_MANIFEST).sort()).toEqual(registeredTools.map((tool) => tool.name).sort())
 
