@@ -125,3 +125,14 @@ test('[keyboard] profile editing: open the editor, change a field, save', async 
   await expect(page.getByRole('status').filter({ hasText: 'Saved.' })).toBeVisible()
   expect(platform.mutations.find((m) => m.name === 'update_me')?.params).toMatchObject({ name: 'Alex Keyboard' })
 })
+
+test('[keyboard] mow reminder: the banner shows and reminders can be turned off', async ({ page, context }) => {
+  const platform = await mockPlatform(context, 'client')
+  await page.goto('/app')
+  await ready(page)
+  const banner = page.getByRole('region', { name: 'Mow reminder' })
+  await expect(banner).toContainText('Mow tomorrow at 07:30')
+  await tabTo(page, banner.getByRole('button', { name: 'Turn off reminders' }))
+  await page.keyboard.press('Enter')
+  await expect.poll(() => platform.mutations.map((m) => m.name)).toContain('set_reminder_opt_out')
+})

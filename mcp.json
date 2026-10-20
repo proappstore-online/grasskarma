@@ -226,6 +226,7 @@
         "UPDATE schedules SET mower_id = NULL, updated_at = :__now WHERE mower_id = :user_id AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
         "DELETE FROM mower_reviews WHERE (mower_id = :user_id OR reviewer_id = :user_id) AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
         "DELETE FROM history_records WHERE mower_id = :user_id AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
+        "DELETE FROM reminder_opt_out WHERE user_id = :user_id AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
         "DELETE FROM users WHERE id = :user_id AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))"
       ],
       "params": {
@@ -875,6 +876,30 @@
           "type": "string"
         }
       },
+      "requires_auth": true
+    },
+    {
+      "name": "get_reminder_opt_out",
+      "description": "Whether the caller has turned off mow reminders (one row when opted out, none otherwise)",
+      "operation": "query",
+      "sql": "SELECT user_id FROM reminder_opt_out WHERE user_id = :__user_id",
+      "params": {},
+      "requires_auth": true
+    },
+    {
+      "name": "set_reminder_opt_out",
+      "description": "Turn off mow reminders for the caller; repeating it is idempotent and still affects one row",
+      "operation": "execute",
+      "sql": "INSERT OR REPLACE INTO reminder_opt_out (user_id, created_at) SELECT u.id, :__now FROM users u WHERE u.id = :__user_id",
+      "params": {},
+      "requires_auth": true
+    },
+    {
+      "name": "clear_reminder_opt_out",
+      "description": "Turn mow reminders back on for the caller (zero rows when they were already on)",
+      "operation": "execute",
+      "sql": "DELETE FROM reminder_opt_out WHERE user_id = :__user_id",
+      "params": {},
       "requires_auth": true
     }
   ]

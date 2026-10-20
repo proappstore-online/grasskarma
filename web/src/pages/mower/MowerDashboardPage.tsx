@@ -5,6 +5,7 @@ import { listGroups } from '../../lib/streetGroups'
 import { completeSchedule, listSchedulesForMower, type ScheduleCompletion } from '../../lib/schedules'
 import { listHistory } from '../../lib/history'
 import { averageRating } from '../../lib/reviews'
+import { MowReminderBanner } from '../../components/MowReminderBanner'
 import { useAsyncResource } from '../../hooks/useAsyncResource'
 import type { Schedule, StreetGroup } from '../../models'
 
@@ -93,6 +94,15 @@ export default function MowerDashboardPage() {
           </p>
         )}
       </header>
+
+      <MowReminderBanner
+        schedules={upcoming}
+        placeFor={(schedule) => {
+          const group = assigned.find((g) => g.id === schedule.groupId)
+          return group ? group.streetName ?? group.name : null
+        }}
+        preferencesPath="/mower/preferences"
+      />
 
       <div className="grid gap-6 md:grid-cols-3">
         <Stat label="Active streets" value={assigned.length} />

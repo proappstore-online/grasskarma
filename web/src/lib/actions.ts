@@ -71,6 +71,9 @@ export const ACTION_MANIFEST = {
   cast_vote: { operation: 'execute', params: { interest_id: string(), vote: integerValues([-1, 1] as const) } },
   list_votes: { operation: 'query', params: { interest_id: string() } },
   vote_tally: { operation: 'query', params: { interest_id: string() } },
+  get_reminder_opt_out: { operation: 'query', params: {} },
+  set_reminder_opt_out: { operation: 'execute', params: {} },
+  clear_reminder_opt_out: { operation: 'execute', params: {} },
 } as const satisfies Record<string, ActionDefinition>
 
 export type ActionName = keyof typeof ACTION_MANIFEST

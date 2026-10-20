@@ -79,6 +79,8 @@ function fixtures() {
   const schedules = [
     { id: 's-1', group_id: 'g-1', day_of_week: 6, start_time: '09:00', mower_id: 'u-mower', status: 'planned', due_date: T + 3 * DAY, completed_at: null, created_at: T, updated_at: T },
     { id: 's-2', group_id: 'g-1', day_of_week: 6, start_time: '09:00', mower_id: 'u-mower', status: 'done', due_date: T - 4 * DAY, completed_at: T - 4 * DAY, created_at: T - 11 * DAY, updated_at: T - 4 * DAY },
+    // Due tomorrow in real time, so the dashboards render the reminder banner (#29).
+    { id: 's-4', group_id: 'g-1', day_of_week: null, start_time: '07:30', mower_id: 'u-mower', status: 'planned', due_date: Date.now() + DAY, completed_at: null, created_at: T, updated_at: T },
     { id: 's-3', group_id: 'g-1', day_of_week: null, start_time: null, mower_id: null, status: 'skipped', due_date: T - 11 * DAY, completed_at: null, created_at: T - 18 * DAY, updated_at: T - 11 * DAY },
   ]
   const groupInterests = [{ id: 'gi-1', group_id: 'g-1', user_id: 'u-applicant', message: 'I live at number 40.', created_at: T - DAY }]
@@ -126,6 +128,7 @@ function query(db: Db, me: string, name: string, p: Params): unknown[] | undefin
     case 'list_interests_for_group': return eq(db.mowerInterests, 'group_id', p.group_id)
     case 'list_interests_for_mower': return eq(db.mowerInterests, 'mower_id', me)
     case 'list_votes': return eq(db.votes, 'interest_id', p.interest_id)
+    case 'get_reminder_opt_out': return []
     case 'vote_tally': {
       const rows = eq(db.votes, 'interest_id', p.interest_id)
       return [{ up: rows.filter((v) => v.vote === 1).length, down: rows.filter((v) => v.vote === -1).length }]
@@ -142,6 +145,7 @@ const MUTATIONS = new Set([
   'create_group', 'update_group', 'add_group_member', 'remove_group_member', 'add_group_admin', 'remove_group_admin', 'delete_group',
   'create_group_interest', 'delete_group_interest', 'approve_group_interest', 'create_schedule', 'update_schedule', 'complete_schedule',
   'delete_schedule', 'create_review', 'update_review', 'delete_review', 'record_history', 'create_mower_interest', 'delete_mower_interest', 'cast_vote',
+  'set_reminder_opt_out', 'clear_reminder_opt_out',
 ])
 
 export interface Platform {

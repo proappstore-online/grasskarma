@@ -196,6 +196,17 @@ export const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_photo_cleanup_jobs_user ON photo_cleanup_jobs(user_id);
     `,
   },
+  {
+    name: '0006_reminder_opt_out',
+    // One row per user who has turned off mow reminders (#29). No row means
+    // reminders are on, so existing users keep the default without a backfill.
+    sql: `
+      CREATE TABLE IF NOT EXISTS reminder_opt_out (
+        user_id    TEXT PRIMARY KEY,
+        created_at INTEGER NOT NULL
+      );
+    `,
+  },
 ]
 
 let migrated = false

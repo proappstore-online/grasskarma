@@ -6,6 +6,7 @@ import { getUser } from '../../lib/users'
 import { listSchedules } from '../../lib/schedules'
 import { averageRating } from '../../lib/reviews'
 import { useAsyncResource } from '../../hooks/useAsyncResource'
+import { MowReminderBanner } from '../../components/MowReminderBanner'
 import type { User } from '../../models'
 
 export default function DashboardPage() {
@@ -60,6 +61,8 @@ export default function DashboardPage() {
         </p>
         {isAdmin && <Link to="/app/manage" className="inline-flex min-h-11 items-center text-sm text-[var(--accent)] hover:underline">Manage group →</Link>}
       </header>
+
+      <MowReminderBanner schedules={schedules} preferencesPath="/app/preferences" />
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-lg border border-[var(--line)] bg-[var(--glass)] p-5">
