@@ -969,7 +969,12 @@
           "optional": true
         }
       },
-      "requires_auth": true
+      "requires_auth": true,
+      "auth": {
+        "caller_unscoped": {
+          "reason": "The same public street-group directory as list_groups, narrowed to one suburb and postcode through the normalized location index: street name, suburb, postcode, status and opaque member ids; no contact or house-level address data"
+        }
+      }
     },
     {
       "name": "list_group_members",
