@@ -38,7 +38,7 @@ export default function AdminDashboardPage() {
         <div className="rounded-lg border border-[var(--line)] bg-[var(--glass)] p-5">
           <div className="flex items-baseline justify-between">
             <h2 className="display-font text-lg font-semibold">Users</h2>
-            <Link to="/admin/users" className="text-sm text-[var(--accent)] hover:underline">
+            <Link to="/admin/users" className="inline-flex min-h-11 items-center text-sm text-[var(--accent)] hover:underline">
               View all →
             </Link>
           </div>
@@ -54,7 +54,7 @@ export default function AdminDashboardPage() {
         <div className="rounded-lg border border-[var(--line)] bg-[var(--glass)] p-5">
           <div className="flex items-baseline justify-between">
             <h2 className="display-font text-lg font-semibold">Street groups</h2>
-            <Link to="/admin/groups" className="text-sm text-[var(--accent)] hover:underline">
+            <Link to="/admin/groups" className="inline-flex min-h-11 items-center text-sm text-[var(--accent)] hover:underline">
               View all →
             </Link>
           </div>

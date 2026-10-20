@@ -229,7 +229,7 @@ export default function GroupManagementPage() {
             {requests.map((request) => (
               <li key={request.interest.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div><p className="font-medium">{request.applicant?.name ?? 'Neighbour'}</p>{request.interest.message && <p className="text-sm text-[var(--muted)]">{request.interest.message}</p>}</div>
-                <div className="flex gap-2"><button onClick={() => void approve(request)} disabled={busy === request.interest.id} className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-sm font-medium text-[var(--on-accent)] disabled:opacity-50">Approve</button><button onClick={() => void reject(request)} disabled={busy === request.interest.id} className="rounded-md border border-[var(--line)] px-3 py-1.5 text-sm disabled:opacity-50">Decline</button></div>
+                <div className="flex gap-2"><button onClick={() => void approve(request)} disabled={busy === request.interest.id} aria-label={`Approve ${request.applicant?.name ?? 'neighbour'}`} className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-sm font-medium text-[var(--on-accent)] disabled:opacity-50">Approve</button><button onClick={() => void reject(request)} disabled={busy === request.interest.id} aria-label={`Decline ${request.applicant?.name ?? 'neighbour'}`} className="rounded-md border border-[var(--line)] px-3 py-1.5 text-sm disabled:opacity-50">Decline</button></div>
               </li>
             ))}
           </ul>

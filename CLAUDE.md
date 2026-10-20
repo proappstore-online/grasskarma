@@ -54,6 +54,7 @@ Pages and admin operations always go through these — never call `app.db.*` dir
 - **Google + GitHub OAuth only.** Source also supported email/password + Facebook. `AuthGate` calls `app.auth.signIn(provider)` directly because `useProGate`'s `signIn` is GitHub-only.
 - **MUI dropped** in favour of tailwind + the brand vars in `web/src/index.css` (`--accent` teal `#297373`, darkened from the source `#2D7D7D` for AA contrast, `--secondary` green `#5CB85C`).
 - **Minimal tests.** Vitest regression tests for the auth path only (`pnpm test` = typecheck + `vitest run`); broader coverage deferred per ship-and-test-in-prod stance.
+- **Accessibility gate.** `deploy.yml`'s `a11y` job runs `e2e/playwright.a11y.config.ts` (axe WCAG 2.2 AA, no horizontal scroll at 360/414px, 44px tap targets, keyboard walkthroughs) against a local preview with the platform mocked, and blocks the deploy on failure. New routes go in `e2e/a11y/a11y.spec.ts`; new actions need a handler in `e2e/a11y/platform.ts`. See `e2e/README.md`.
 
 ## Files of note
 

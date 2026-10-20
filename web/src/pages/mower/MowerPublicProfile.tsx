@@ -67,7 +67,7 @@ export default function MowerPublicProfile() {
             {mower.publicContactEmail && (
               <a
                 href={mowerContactHref(mower.publicContactEmail)}
-                className="mt-4 inline-block rounded-md bg-[var(--accent)] px-3 py-1.5 text-sm font-medium text-[var(--on-accent)] hover:opacity-90"
+                className="mt-4 inline-flex min-h-11 items-center rounded-md bg-[var(--accent)] px-3 py-1.5 text-sm font-medium text-[var(--on-accent)] hover:opacity-90"
               >
                 Email mower
               </a>

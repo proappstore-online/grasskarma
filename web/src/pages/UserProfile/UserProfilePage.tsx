@@ -146,7 +146,7 @@ export default function UserProfilePage() {
           {!isMe && (
             <Link
               to={`/mower/${user.id}`}
-              className="mt-4 inline-block text-sm text-[var(--accent)] hover:underline"
+              className="mt-4 inline-flex min-h-11 items-center text-sm text-[var(--accent)] hover:underline"
             >
               View public mower profile + reviews →
             </Link>

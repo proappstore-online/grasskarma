@@ -55,3 +55,25 @@ E2E_SESSION_TOKEN=<smoke account session> npx playwright test  # all flows
 ```
 
 `E2E_BASE_URL` overrides the target (default: production).
+
+## Accessibility and mobile gate (`a11y/`, #30)
+
+A second suite, run **before** deploy by the `a11y` job in `deploy.yml`. It drives a local
+`vite preview` of the commit's build, not production, with the platform mocked in-browser by
+`a11y/platform.ts` (fixture rows shaped like the D1 tables; any request it cannot answer fails the
+test). No session or network is needed, so a regression blocks the deploy.
+
+| Spec | What is checked |
+|---|---|
+| `a11y.spec.ts` | Every route, per role, at 360px, 414px and 1280px plus a dark-theme pass: axe-core WCAG 2.2 A/AA + best-practice violations, no horizontal page scroll, and (mobile) every button, field and standalone link at least 44px tall. Links inside running text are exempt. |
+| `keyboard.spec.ts` | Tab/Enter-only walkthroughs: sign-in, skip link, mobile menu (incl. Escape), join a group, book a mow, approve a join request, edit and save a profile. |
+
+Run locally from this directory after `pnpm build` at the repo root:
+
+```
+npx playwright test -c playwright.a11y.config.ts
+```
+
+`A11Y_BROWSER_CHANNEL=chrome` uses an installed Chrome instead of Playwright's bundled Chromium.
+A new route goes in `ROUTES` in `a11y.spec.ts`; a new registered action the pages call needs a
+handler in `a11y/platform.ts`.

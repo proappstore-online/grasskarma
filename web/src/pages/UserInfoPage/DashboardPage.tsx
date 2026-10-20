@@ -58,7 +58,7 @@ export default function DashboardPage() {
           {group.memberIds.length} member{group.memberIds.length === 1 ? '' : 's'}
           {isAdmin ? ' · You are an admin' : ''}
         </p>
-        {isAdmin && <Link to="/app/manage" className="inline-block text-sm text-[var(--accent)] hover:underline">Manage group →</Link>}
+        {isAdmin && <Link to="/app/manage" className="inline-flex min-h-11 items-center text-sm text-[var(--accent)] hover:underline">Manage group →</Link>}
       </header>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -66,7 +66,7 @@ export default function DashboardPage() {
           <h2 className="display-font text-lg font-semibold">Your mower</h2>
           {mower ? (
             <div className="mt-3 space-y-2">
-              <Link to={`/mower/${mower.id}`} className="block font-medium text-[var(--accent)] hover:underline">
+              <Link to={`/mower/${mower.id}`} className="flex min-h-11 items-center font-medium text-[var(--accent)] hover:underline">
                 {mower.name ?? 'Unnamed mower'}
               </Link>
               {mowerRating && mowerRating.count > 0 && (
@@ -79,7 +79,7 @@ export default function DashboardPage() {
           ) : (
             <div className="mt-3 space-y-2">
               <p className="text-sm text-[var(--muted)]">No mower assigned yet.</p>
-              <Link to="/app/mowers" className="text-sm text-[var(--accent)] hover:underline">
+              <Link to="/app/mowers" className="inline-flex min-h-11 items-center text-sm text-[var(--accent)] hover:underline">
                 Browse interested mowers →
               </Link>
             </div>
@@ -151,7 +151,7 @@ export default function DashboardPage() {
                 </div>
               )}
               <div className="min-w-0">
-                <Link to={`/app/user/${m.id}`} className="block truncate text-sm font-medium hover:underline">
+                <Link to={`/app/user/${m.id}`} className="block truncate text-sm leading-11 font-medium hover:underline">
                   {m.name ?? 'Unnamed'}
                 </Link>
                 <p className="truncate text-xs text-[var(--muted)]">

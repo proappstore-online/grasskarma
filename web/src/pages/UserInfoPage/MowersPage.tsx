@@ -152,7 +152,7 @@ export default function MowersPage() {
                     className={`rounded-md px-3 py-1.5 text-sm font-medium ${
                       myVote === 1
                         ? 'bg-[var(--secondary)] text-[var(--on-secondary)]'
-                        : 'border border-[var(--secondary)] text-[var(--secondary)] hover:bg-[var(--secondary-soft)]'
+                        : 'border border-[var(--secondary)] text-[var(--success)] hover:bg-[var(--secondary-soft)]'
                     } disabled:opacity-50`}
                   >
                     ↑ Up

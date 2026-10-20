@@ -44,4 +44,10 @@ describe('AuthContext profile loading', () => {
       profileLoadError: new Error('profile request failed'),
     })).toBe('profile-error')
   })
+
+  it('keeps the app mounted while an already-loaded profile refreshes', () => {
+    const user = { id: 'u-1', role: 'client' } as Parameters<typeof resolveAuthGate>[0]['user']
+    expect(resolveAuthGate({ platformGate: 'ready', loadingUser: true, user: null, profileLoadError: null })).toBe('loading')
+    expect(resolveAuthGate({ platformGate: 'ready', loadingUser: true, user, profileLoadError: null })).toBe('ready')
+  })
 })

@@ -40,7 +40,10 @@ export function resolveAuthGate({
   user: User | null
   profileLoadError: Error | null
 }): Gate {
-  if (platformGate === 'loading' || (platformGate === 'ready' && loadingUser)) return 'loading'
+  // Only the first profile load blocks the app. A refresh after a profile save
+  // keeps the loaded profile on screen; replacing the whole app with the
+  // loading screen would unmount the page mid-save and drop keyboard focus.
+  if (platformGate === 'loading' || (platformGate === 'ready' && loadingUser && !user)) return 'loading'
   if (platformGate === 'signed-out' || platformGate === 'no-subscription') return 'signed-out'
   if (profileLoadError) return 'profile-error'
   return user ? 'ready' : 'no-role'

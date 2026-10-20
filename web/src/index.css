@@ -64,5 +64,10 @@ textarea,
 input:not([type='checkbox']):not([type='radio']) {
   min-height: 2.75rem;
 }
+/* A link inside running text must not rely on colour alone (WCAG 1.4.1). */
+p > a {
+  text-decoration-line: underline;
+  text-underline-offset: 2px;
+}
 .display-font { font-family: 'Fraunces', Georgia, serif; letter-spacing: -0.04em; }
 } /* end @layer base */

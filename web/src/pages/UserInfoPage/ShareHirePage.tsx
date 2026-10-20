@@ -61,7 +61,7 @@ export default function ShareHirePage() {
                   </div>
                 )}
                 <div className="min-w-0">
-                  <Link to={`/mower/${m.id}`} className="block truncate font-medium hover:underline">
+                  <Link to={`/mower/${m.id}`} className="block truncate leading-11 font-medium hover:underline">
                     {m.name ?? 'Unnamed mower'}
                   </Link>
                   <p className="truncate text-xs text-[var(--muted)]">
@@ -92,7 +92,7 @@ export default function ShareHirePage() {
                 </button>
                 <Link
                   to={user?.role === 'mower' ? `/mower/${m.id}` : `/app/user/${m.id}`}
-                  aria-label={`View ${m.name ?? 'this mower'}'s profile`}
+                  aria-label={`View profile of ${m.name ?? 'this mower'}`}
                   className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-[var(--accent)] px-3 py-1.5 text-center text-sm text-[var(--accent)] hover:bg-[var(--accent-soft)]"
                 >
                   View profile

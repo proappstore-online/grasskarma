@@ -35,6 +35,7 @@ export function ExistingGroupList({ groups, busy, requestedIds, onJoin }: Existi
           </div>
           <button
             onClick={() => onJoin(g)}
+            aria-label={`Request to join ${g.name}`}
             disabled={busy || requestedIds.includes(g.id)}
             className="rounded-md border border-[var(--accent)] px-3 py-1.5 text-sm text-[var(--accent)] hover:bg-[var(--accent-soft)] disabled:opacity-50"
           >
