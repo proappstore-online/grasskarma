@@ -81,6 +81,8 @@ function fixtures() {
     { id: 's-2', group_id: 'g-1', day_of_week: 6, start_time: '09:00', mower_id: 'u-mower', status: 'done', due_date: T - 4 * DAY, completed_at: T - 4 * DAY, created_at: T - 11 * DAY, updated_at: T - 4 * DAY },
     // Due tomorrow in real time, so the dashboards render the reminder banner (#29).
     { id: 's-4', group_id: 'g-1', day_of_week: null, start_time: '07:30', mower_id: 'u-mower', status: 'planned', due_date: Date.now() + DAY, completed_at: null, created_at: T, updated_at: T },
+    // Done and already confirmed by the client persona (#29).
+    { id: 's-5', group_id: 'g-1', day_of_week: null, start_time: '08:00', mower_id: 'u-mower', status: 'done', due_date: T - 18 * DAY, completed_at: T - 18 * DAY, created_at: T - 25 * DAY, updated_at: T - 18 * DAY },
     { id: 's-3', group_id: 'g-1', day_of_week: null, start_time: null, mower_id: null, status: 'skipped', due_date: T - 11 * DAY, completed_at: null, created_at: T - 18 * DAY, updated_at: T - 11 * DAY },
   ]
   const groupInterests = [{ id: 'gi-1', group_id: 'g-1', user_id: 'u-applicant', message: 'I live at number 40.', created_at: T - DAY }]
@@ -91,8 +93,14 @@ function fixtures() {
   ]
   const votes = [{ interest_id: 'mi-1', voter_id: 'u-client', vote: 1, created_at: T - 14 * DAY }]
   const reviews = [{ id: 'r-1', mower_id: 'u-mower', reviewer_id: 'u-client', group_id: 'g-1', schedule_id: 's-2', rating: 5, comment: 'Tidy edges.', created_at: T - 3 * DAY, updated_at: T - 3 * DAY }]
+  // s-2 has an after-photo and awaits the client's confirmation; s-5 is confirmed.
+  const completions = [
+    { schedule_id: 's-2', after_photo_key: 'u/u-mower/lawns/after-1.jpg' },
+    { schedule_id: 's-5', after_photo_key: null },
+  ]
+  const mowRatings = [{ schedule_id: 's-5', user_id: 'u-client', rating: 4, comment: 'Neat edges.', confirmed_at: T - 17 * DAY }]
   const history = [{ id: 'h-1', mower_id: 'u-mower', group_id: 'g-1', schedule_id: 's-2', street_name: 'Brunswick St', area_sqm: 160, duration_min: 45, income: 80, date: T - 4 * DAY }]
-  return { users, groups, schedules, groupInterests, mowerInterests, votes, reviews, history }
+  return { users, groups, schedules, groupInterests, mowerInterests, votes, reviews, history, completions, mowRatings }
 }
 
 const PERSONA_USER: Record<Exclude<Persona, 'signed-out'>, string> = {
@@ -106,6 +114,20 @@ const PERSONA_USER: Record<Exclude<Persona, 'signed-out'>, string> = {
 type Params = Record<string, unknown>
 type Db = ReturnType<typeof fixtures>
 
+/** The columns list_schedules joins in: after-photo, the viewer's own rating, the confirmation count. */
+function withCompletion<T extends { id: string }>(db: Db, me: string, rows: T[]) {
+  return rows.map((row) => {
+    const mine = db.mowRatings.find((r) => r.schedule_id === row.id && r.user_id === me)
+    return {
+      ...row,
+      after_photo_key: db.completions.find((c) => c.schedule_id === row.id)?.after_photo_key ?? null,
+      my_rating: mine?.rating ?? null,
+      my_comment: mine?.comment ?? null,
+      confirmation_count: db.mowRatings.filter((r) => r.schedule_id === row.id).length,
+    }
+  })
+}
+
 function query(db: Db, me: string, name: string, p: Params): unknown[] | undefined {
   const eq = <T extends Record<string, unknown>>(rows: T[], key: keyof T, value: unknown) => value == null ? rows : rows.filter((r) => r[key] === value)
   switch (name) {
@@ -117,8 +139,9 @@ function query(db: Db, me: string, name: string, p: Params): unknown[] | undefin
     case 'get_group': return db.groups.filter((g) => g.id === p.id)
     case 'find_group_by_location': return db.groups.filter((g) => g.street_name === p.street_name && g.suburb === p.suburb && g.postcode === p.postcode)
     case 'list_group_interests': return eq(db.groupInterests, 'group_id', p.group_id)
-    case 'list_schedules': return eq(db.schedules, 'group_id', p.group_id)
-    case 'list_schedules_for_mower': return eq(db.schedules, 'mower_id', me)
+    case 'list_schedules': return withCompletion(db, me, eq(db.schedules, 'group_id', p.group_id))
+    case 'list_schedules_for_mower': return withCompletion(db, me, eq(db.schedules, 'mower_id', me))
+    case 'list_mow_ratings': return eq(db.mowRatings, 'schedule_id', p.schedule_id)
     case 'list_reviews': return eq(db.reviews, 'mower_id', p.mower_id)
     case 'average_rating': {
       const rows = eq(db.reviews, 'mower_id', p.mower_id)
@@ -145,7 +168,7 @@ const MUTATIONS = new Set([
   'create_group', 'update_group', 'add_group_member', 'remove_group_member', 'add_group_admin', 'remove_group_admin', 'delete_group',
   'create_group_interest', 'delete_group_interest', 'approve_group_interest', 'create_schedule', 'update_schedule', 'complete_schedule',
   'delete_schedule', 'create_review', 'update_review', 'delete_review', 'record_history', 'create_mower_interest', 'delete_mower_interest', 'cast_vote',
-  'set_reminder_opt_out', 'clear_reminder_opt_out',
+  'set_reminder_opt_out', 'clear_reminder_opt_out', 'confirm_mow',
 ])
 
 export interface Platform {

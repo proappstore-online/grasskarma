@@ -74,6 +74,8 @@ export const ACTION_MANIFEST = {
   get_reminder_opt_out: { operation: 'query', params: {} },
   set_reminder_opt_out: { operation: 'execute', params: {} },
   clear_reminder_opt_out: { operation: 'execute', params: {} },
+  confirm_mow: { operation: 'execute', params: { schedule_id: string(), rating: integer(), comment: optional(string()) } },
+  list_mow_ratings: { operation: 'query', params: { schedule_id: string() } },
 } as const satisfies Record<string, ActionDefinition>
 
 export type ActionName = keyof typeof ACTION_MANIFEST

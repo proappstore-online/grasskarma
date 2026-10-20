@@ -224,6 +224,24 @@ export const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_mow_completions_mower ON mow_completions(mower_id);
     `,
   },
+  {
+    name: '0008_mow_ratings',
+    // A group member's confirmation of a completed mow, with a 1-5 rating
+    // and optional short comment (#29). One row per member per mow; a repeat
+    // confirmation replaces it. No REFERENCES clauses, matching the rest of
+    // the schema: D1 enforces foreign keys, and the delete actions clean up.
+    sql: `
+      CREATE TABLE IF NOT EXISTS mow_ratings (
+        schedule_id  TEXT NOT NULL,
+        user_id      TEXT NOT NULL,
+        rating       INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+        comment      TEXT CHECK (comment IS NULL OR length(comment) <= 280),
+        confirmed_at INTEGER NOT NULL,
+        PRIMARY KEY (schedule_id, user_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_mow_ratings_user ON mow_ratings(user_id);
+    `,
+  },
 ]
 
 let migrated = false
@@ -322,6 +340,11 @@ export interface ScheduleRow {
   updated_at: number
   /** From mow_completions, joined by the schedule reads. */
   after_photo_key?: string | null
+  /** The caller's own confirmation rating, if any (mow_ratings). */
+  my_rating?: number | null
+  my_comment?: string | null
+  /** How many members have confirmed this mow. */
+  confirmation_count?: number
 }
 
 export interface MowerReviewRow {

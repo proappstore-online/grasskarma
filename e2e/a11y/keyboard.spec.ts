@@ -154,3 +154,28 @@ test('[keyboard] mark a mow done: open the form, skip the photo, confirm', async
   await expect(page.getByRole('status').filter({ hasText: /^Marked done: / })).toBeVisible()
   expect(platform.mutations.find((m) => m.name === 'complete_schedule')?.params).toMatchObject({ schedule_id: 's-1', group_id: 'g-1', after_photo_key: null })
 })
+
+test('[keyboard] confirm a mow: rate it with the arrow keys and confirm', async ({ page, context }) => {
+  const platform = await mockPlatform(context, 'client')
+  await page.goto('/app')
+  await ready(page)
+  // The already-confirmed mow shows its rating; the other awaits confirmation.
+  await expect(page.getByRole('status').filter({ hasText: /^Confirmed ★4 out of 5$/ })).toBeVisible()
+  const form = page.getByRole('group', { name: /^Rate the mow: / })
+  await expect(form).toHaveCount(1)
+  await expect(page.getByRole('img', { name: /^After photo of the lawn/ })).toHaveCount(1)
+
+  // Tab lands on the first radio of the group; arrows move the choice.
+  await tabTo(page, form.getByRole('radio', { name: '1 star' }))
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('ArrowRight')
+  await expect(form.getByRole('radio', { name: '4 stars' })).toBeChecked()
+  await page.keyboard.press('Tab')
+  await expect(form.getByLabel('Comment (optional)')).toBeFocused()
+  await page.keyboard.type('Neat job')
+  await tabTo(page, form.getByRole('button', { name: /^Confirm: / }))
+  await page.keyboard.press('Enter')
+  await expect.poll(() => platform.mutations.map((m) => m.name)).toContain('confirm_mow')
+  expect(platform.mutations.find((m) => m.name === 'confirm_mow')?.params).toEqual({ schedule_id: 's-2', rating: 4, comment: 'Neat job' })
+})

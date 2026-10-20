@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { listGroups } from '../../lib/streetGroups'
-import { listSchedulesForMower, type ScheduleCompletion } from '../../lib/schedules'
+import { listSchedulesForMower, mowLabel, type ScheduleCompletion } from '../../lib/schedules'
 import { listHistory } from '../../lib/history'
 import { averageRating } from '../../lib/reviews'
+import { mowerCompletionLabel } from '../../lib/mowRatings'
 import { MarkMowDone } from '../../components/MarkMowDone'
 import { markMowDone } from '../../lib/mowCompletion'
 import { ActionRefusedError } from '../../lib/actions'
@@ -20,6 +21,11 @@ function isProfileComplete(m: { suburb?: string; postcode?: string; serviceRadiu
  * The schedule query is newest-due first; upcoming work is shown soonest first,
  * with undated jobs last.
  */
+/** Finished work, newest due first (the query's order), for its confirmation state. */
+export function recentCompletions(schedules: Schedule[]): Schedule[] {
+  return schedules.filter((schedule) => schedule.status !== 'planned').slice(0, 5)
+}
+
 export function upcomingSchedules(schedules: Schedule[]): Schedule[] {
   return schedules
     .filter((schedule) => schedule.status === 'planned')
@@ -30,12 +36,6 @@ export function upcomingSchedules(schedules: Schedule[]): Schedule[] {
  * The server authorizes completion by the schedule's own mower and group, so a
  * job stays completable even when its group is no longer assigned to the mower.
  */
-/** How a mow is named in the mower's list and messages. */
-export function mowLabel(schedule: Schedule): string {
-  const date = schedule.dueDate ? new Date(schedule.dueDate).toLocaleDateString() : 'Unscheduled'
-  return schedule.startTime ? `${date} · ${schedule.startTime}` : date
-}
-
 export function completionForSchedule(schedule: Schedule, groups: StreetGroup[]): ScheduleCompletion {
   const group = groups.find((candidate) => candidate.id === schedule.groupId)
   return {
@@ -65,10 +65,11 @@ export default function MowerDashboardPage() {
       listHistory(user!.id, 10),
       averageRating(user!.id),
     ])
-    return { assigned, upcoming: upcomingSchedules(schedules), history, rating }
+    return { assigned, upcoming: upcomingSchedules(schedules), recent: recentCompletions(schedules), history, rating }
   }, [user?.id, user?.mowerProfile], { enabled: Boolean(user && isProfileComplete(user.mowerProfile)) })
   const assigned = data?.assigned ?? []
   const upcoming = data?.upcoming ?? []
+  const recent = data?.recent ?? []
   const history = data?.history ?? []
   const rating = data?.rating ?? null
 
@@ -160,6 +161,24 @@ export default function MowerDashboardPage() {
                   <Link to={`/mower/history`} className="inline-flex min-h-11 items-center text-xs text-[var(--accent)] hover:underline">History</Link>
                   <MarkMowDone mowLabel={mowLabel(s)} saving={completing === s.id} onConfirm={(photo) => void complete(s, photo)} />
                 </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-[var(--line)] bg-[var(--glass)] p-5">
+        <h2 className="display-font text-lg font-semibold">Recent completions</h2>
+        {recent.length === 0 ? (
+          <p className="mt-2 text-sm text-[var(--muted)]">No completed mows yet.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-[var(--line)]">
+            {recent.map((s) => (
+              <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
+                <span>{mowLabel(s)}</span>
+                <span className={`rounded-full px-2 py-0.5 text-xs ${s.confirmationCount > 0 ? 'bg-[var(--secondary-soft)] text-[var(--success)]' : 'bg-[var(--accent-soft)] text-[var(--accent)]'}`}>
+                  {mowerCompletionLabel(s)}
+                </span>
               </li>
             ))}
           </ul>

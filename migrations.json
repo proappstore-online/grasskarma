@@ -27,6 +27,10 @@
     {
       "name": "0007_mow_completions",
       "sql": "CREATE TABLE IF NOT EXISTS mow_completions ( schedule_id TEXT PRIMARY KEY, mower_id TEXT NOT NULL, after_photo_key TEXT, completed_at INTEGER NOT NULL ); CREATE INDEX IF NOT EXISTS idx_mow_completions_mower ON mow_completions(mower_id);"
+    },
+    {
+      "name": "0008_mow_ratings",
+      "sql": "CREATE TABLE IF NOT EXISTS mow_ratings ( schedule_id TEXT NOT NULL, user_id TEXT NOT NULL, rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5), comment TEXT CHECK (comment IS NULL OR length(comment) <= 280), confirmed_at INTEGER NOT NULL, PRIMARY KEY (schedule_id, user_id) ); CREATE INDEX IF NOT EXISTS idx_mow_ratings_user ON mow_ratings(user_id);"
     }
   ]
 }

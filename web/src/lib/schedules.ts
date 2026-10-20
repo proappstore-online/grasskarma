@@ -22,6 +22,16 @@ export function validateScheduleRange(input: Pick<ScheduleCreate, 'dayOfWeek' | 
   }
 }
 
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+/** How a mow is named in lists, messages and accessible names. */
+export function mowLabel(schedule: Pick<Schedule, 'dueDate' | 'dayOfWeek' | 'startTime'>): string {
+  const day = schedule.dueDate != null
+    ? new Date(schedule.dueDate).toLocaleDateString()
+    : schedule.dayOfWeek != null ? `Every ${WEEKDAYS[schedule.dayOfWeek]}` : 'Unscheduled'
+  return schedule.startTime ? `${day} · ${schedule.startTime}` : day
+}
+
 export function validateScheduleStatus(status: ScheduleStatus): void {
   if (!scheduleStatusSet.has(status)) throw new Error(`Schedule status must be ${SCHEDULE_STATUSES.join(', ')}.`)
 }
@@ -37,6 +47,9 @@ function rowToSchedule(r: ScheduleRow): Schedule {
     dueDate: r.due_date,
     completedAt: r.completed_at,
     afterPhotoUrl: r.after_photo_key ? app.storage.publicUrl(r.after_photo_key) : null,
+    myRating: r.my_rating ?? null,
+    myComment: r.my_comment ?? null,
+    confirmationCount: r.confirmation_count ?? 0,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   }
@@ -86,6 +99,9 @@ export async function createSchedule(input: ScheduleCreate): Promise<Schedule> {
     dueDate: input.dueDate ?? null,
     completedAt: null,
     afterPhotoUrl: null,
+    myRating: null,
+    myComment: null,
+    confirmationCount: 0,
     createdAt: now,
     updatedAt: now,
   }

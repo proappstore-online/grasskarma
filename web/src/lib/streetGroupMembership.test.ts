@@ -90,7 +90,7 @@ describe('street-group membership actions', () => {
     for (const name of ['create_group', 'add_group_member', 'remove_group_member', 'delete_group']) {
       const tool = action(name)
       expect(tool.operation, name).toBe('batch')
-      expect(tool.statements, name).toHaveLength(name === 'delete_group' ? 7 : 2)
+      expect(tool.statements, name).toHaveLength(name === 'delete_group' ? 8 : 2)
     }
   })
 

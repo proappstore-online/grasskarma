@@ -228,6 +228,7 @@
         "DELETE FROM history_records WHERE mower_id = :user_id AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
         "DELETE FROM reminder_opt_out WHERE user_id = :user_id AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
         "DELETE FROM mow_completions WHERE mower_id = :user_id AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
+        "DELETE FROM mow_ratings WHERE user_id = :user_id AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))",
         "DELETE FROM users WHERE id = :user_id AND (:user_id = :__user_id OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin'))"
       ],
       "params": {
@@ -461,6 +462,7 @@
       "requires_auth": true,
       "statements": [
         "UPDATE users SET street_group_id = NULL, updated_at = :__now WHERE street_group_id = :group_id AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')))",
+        "DELETE FROM mow_ratings WHERE schedule_id IN (SELECT id FROM schedules WHERE group_id = :group_id) AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')))",
         "DELETE FROM mow_completions WHERE schedule_id IN (SELECT id FROM schedules WHERE group_id = :group_id) AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')))",
         "DELETE FROM schedules WHERE group_id = :group_id AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')))",
         "DELETE FROM street_group_interests WHERE group_id = :group_id AND EXISTS (SELECT 1 FROM street_groups g WHERE g.id = :group_id AND (EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')))",
@@ -532,7 +534,7 @@
       "name": "list_schedules",
       "description": "List a group's schedules ordered by due date then day of week",
       "operation": "query",
-      "sql": "SELECT s.*, c.after_photo_key FROM schedules_compatible s LEFT JOIN mow_completions c ON c.schedule_id = s.id WHERE s.group_id = :group_id AND (s.mower_id = :__user_id OR EXISTS (SELECT 1 FROM street_groups g WHERE g.id = s.group_id AND ((EXISTS (SELECT 1 FROM json_each(g.member_ids) c WHERE c.value = :__user_id) OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) c WHERE c.value = :__user_id)) OR g.assigned_mower_id = :__user_id)) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) ORDER BY due_date ASC NULLS LAST, day_of_week ASC NULLS LAST",
+      "sql": "SELECT s.*, c.after_photo_key, (SELECT r.rating FROM mow_ratings r WHERE r.schedule_id = s.id AND r.user_id = :__user_id) AS my_rating, (SELECT r.comment FROM mow_ratings r WHERE r.schedule_id = s.id AND r.user_id = :__user_id) AS my_comment, (SELECT COUNT(*) FROM mow_ratings r WHERE r.schedule_id = s.id) AS confirmation_count FROM schedules_compatible s LEFT JOIN mow_completions c ON c.schedule_id = s.id WHERE s.group_id = :group_id AND (s.mower_id = :__user_id OR EXISTS (SELECT 1 FROM street_groups g WHERE g.id = s.group_id AND ((EXISTS (SELECT 1 FROM json_each(g.member_ids) c WHERE c.value = :__user_id) OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) c WHERE c.value = :__user_id)) OR g.assigned_mower_id = :__user_id)) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) ORDER BY due_date ASC NULLS LAST, day_of_week ASC NULLS LAST",
       "params": {
         "group_id": {
           "type": "string"
@@ -544,7 +546,7 @@
       "name": "list_schedules_for_mower",
       "description": "List the calling mower's own schedules",
       "operation": "query",
-      "sql": "SELECT s.*, c.after_photo_key FROM schedules_compatible s LEFT JOIN mow_completions c ON c.schedule_id = s.id WHERE s.mower_id = :__user_id ORDER BY s.due_date DESC LIMIT :limit",
+      "sql": "SELECT s.*, c.after_photo_key, (SELECT r.rating FROM mow_ratings r WHERE r.schedule_id = s.id AND r.user_id = :__user_id) AS my_rating, (SELECT r.comment FROM mow_ratings r WHERE r.schedule_id = s.id AND r.user_id = :__user_id) AS my_comment, (SELECT COUNT(*) FROM mow_ratings r WHERE r.schedule_id = s.id) AS confirmation_count FROM schedules_compatible s LEFT JOIN mow_completions c ON c.schedule_id = s.id WHERE s.mower_id = :__user_id ORDER BY s.due_date DESC LIMIT :limit",
       "params": {
         "limit": {
           "type": "integer",
@@ -676,7 +678,7 @@
       "name": "list_reviews",
       "description": "List reviews for a mower, newest first",
       "operation": "query",
-      "sql": "SELECT id, mower_id, CASE WHEN reviewer_id = :__user_id THEN reviewer_id END AS reviewer_id, CASE WHEN reviewer_id = :__user_id THEN group_id END AS group_id, CASE WHEN reviewer_id = :__user_id THEN schedule_id END AS schedule_id, rating, comment, created_at, updated_at FROM mower_reviews WHERE mower_id = :mower_id ORDER BY created_at DESC",
+      "sql": "SELECT id, mower_id, CASE WHEN reviewer_id = :__user_id THEN reviewer_id END AS reviewer_id, CASE WHEN reviewer_id = :__user_id THEN group_id END AS group_id, CASE WHEN reviewer_id = :__user_id THEN schedule_id END AS schedule_id, rating, comment, created_at, updated_at FROM mower_reviews WHERE mower_id = :mower_id UNION ALL SELECT 'mow:' || r.schedule_id || ':' || r.user_id AS id, s.mower_id, CASE WHEN r.user_id = :__user_id THEN r.user_id END AS reviewer_id, CASE WHEN r.user_id = :__user_id THEN s.group_id END AS group_id, CASE WHEN r.user_id = :__user_id THEN r.schedule_id END AS schedule_id, r.rating, r.comment, r.confirmed_at AS created_at, r.confirmed_at AS updated_at FROM mow_ratings r JOIN schedules s ON s.id = r.schedule_id WHERE s.mower_id = :mower_id ORDER BY created_at DESC",
       "params": {
         "mower_id": {
           "type": "string"
@@ -719,7 +721,7 @@
       "name": "average_rating",
       "description": "Average rating and review count for a mower",
       "operation": "query",
-      "sql": "SELECT AVG(rating) AS avg, COUNT(*) AS n FROM mower_reviews WHERE mower_id = :mower_id",
+      "sql": "SELECT AVG(rating) AS avg, COUNT(*) AS n FROM (SELECT rating FROM mower_reviews WHERE mower_id = :mower_id UNION ALL SELECT r.rating FROM mow_ratings r JOIN schedules s ON s.id = r.schedule_id WHERE s.mower_id = :mower_id)",
       "params": {
         "mower_id": {
           "type": "string"
@@ -904,6 +906,37 @@
       "operation": "execute",
       "sql": "DELETE FROM reminder_opt_out WHERE user_id = :__user_id",
       "params": {},
+      "requires_auth": true
+    },
+    {
+      "name": "confirm_mow",
+      "description": "A street-group member confirms a completed mow with a 1-5 rating and optional comment (max 280 chars); repeating replaces their rating",
+      "operation": "execute",
+      "sql": "INSERT INTO mow_ratings (schedule_id, user_id, rating, comment, confirmed_at) SELECT s.id, :__user_id, :rating, :comment, :__now FROM schedules s JOIN street_groups g ON g.id = s.group_id JOIN users u ON u.id = :__user_id WHERE s.id = :schedule_id AND s.status = 'done' AND u.role = 'client' AND EXISTS (SELECT 1 FROM json_each(g.member_ids) WHERE value = :__user_id) AND :rating BETWEEN 1 AND 5 AND :rating = CAST(:rating AS INTEGER) AND (:comment IS NULL OR length(:comment) <= 280) ON CONFLICT(schedule_id, user_id) DO UPDATE SET rating = excluded.rating, comment = excluded.comment, confirmed_at = excluded.confirmed_at",
+      "params": {
+        "schedule_id": {
+          "type": "string"
+        },
+        "rating": {
+          "type": "integer"
+        },
+        "comment": {
+          "type": "string",
+          "optional": true
+        }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_mow_ratings",
+      "description": "Confirmations for one mow: all of them for the group's admins, the mow's mower and platform admins; otherwise only the caller's own",
+      "operation": "query",
+      "sql": "SELECT r.schedule_id, r.user_id, r.rating, r.comment, r.confirmed_at FROM mow_ratings r JOIN schedules s ON s.id = r.schedule_id JOIN street_groups g ON g.id = s.group_id WHERE r.schedule_id = :schedule_id AND (r.user_id = :__user_id OR s.mower_id = :__user_id OR EXISTS (SELECT 1 FROM json_each(g.admin_ids) WHERE value = :__user_id) OR EXISTS (SELECT 1 FROM users a WHERE a.id = :__user_id AND a.role = 'admin')) ORDER BY r.confirmed_at DESC",
+      "params": {
+        "schedule_id": {
+          "type": "string"
+        }
+      },
       "requires_auth": true
     }
   ]

@@ -3,10 +3,20 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { getGroup } from '../../lib/streetGroups'
 import { getUser } from '../../lib/users'
-import { listSchedules } from '../../lib/schedules'
+import { listSchedules, mowLabel } from '../../lib/schedules'
 import { averageRating } from '../../lib/reviews'
 import { useAsyncResource } from '../../hooks/useAsyncResource'
 import { MowReminderBanner } from '../../components/MowReminderBanner'
+import { ConfirmMow } from '../../components/ConfirmMow'
+import { MOW_STATE_LABEL, mowState, type MowState } from '../../lib/mowRatings'
+
+const MOW_STATE_PILL: Record<MowState, string> = {
+  upcoming: 'bg-[var(--accent-soft)] text-[var(--accent)]',
+  due: 'bg-[var(--accent)] text-[var(--on-accent)]',
+  'awaiting-confirmation': 'border border-[var(--accent)] text-[var(--accent)]',
+  confirmed: 'bg-[var(--secondary-soft)] text-[var(--success)]',
+  skipped: 'bg-[var(--accent-soft)] text-[var(--muted)]',
+}
 import type { User } from '../../models'
 
 export default function DashboardPage() {
@@ -18,7 +28,7 @@ export default function DashboardPage() {
     }
   }, [user, navigate])
 
-  const { data, loading, error } = useAsyncResource(async () => {
+  const { data, loading, error, reload } = useAsyncResource(async () => {
     const group = await getGroup(user!.streetGroupId!)
     if (!group) return { group: null, members: [], schedules: [], mower: null, mowerRating: null }
     const [members, schedules, mower] = await Promise.all([
@@ -114,29 +124,18 @@ export default function DashboardPage() {
           <p className="mt-3 text-sm text-[var(--muted)]">No schedules yet.</p>
         ) : (
           <ul className="mt-3 divide-y divide-[var(--line)]">
-            {schedules.map((s) => (
-              <li key={s.id} className="flex items-center justify-between py-3 text-sm">
-                <span>
-                  {s.dueDate
-                    ? new Date(s.dueDate).toLocaleDateString()
-                    : s.dayOfWeek != null
-                      ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][s.dayOfWeek]
-                      : '—'}
-                  {s.startTime ? ` · ${s.startTime}` : ''}
-                </span>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs ${
-                    s.status === 'done'
-                      ? 'bg-[var(--secondary-soft)] text-[var(--success)]'
-                      : s.status === 'skipped'
-                        ? 'bg-[var(--accent-soft)] text-[var(--muted)]'
-                        : 'bg-[var(--accent-soft)] text-[var(--accent)]'
-                  }`}
-                >
-                  {s.status}
-                </span>
-              </li>
-            ))}
+            {schedules.map((s) => {
+              const state = mowState(s)
+              return (
+                <li key={s.id} className="space-y-3 py-3 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span>{mowLabel(s)}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-xs ${MOW_STATE_PILL[state]}`}>{MOW_STATE_LABEL[state]}</span>
+                  </div>
+                  {s.status === 'done' && <ConfirmMow schedule={s} mowLabel={mowLabel(s)} onSaved={reload} />}
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>
