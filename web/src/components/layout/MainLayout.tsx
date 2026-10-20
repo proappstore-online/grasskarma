@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -169,7 +169,9 @@ export function MainLayout() {
         )}
       </header>
       <main id="main-content" ref={mainRef} tabIndex={-1} className="mx-auto max-w-5xl px-4 py-8 focus:outline-none">
-        <Outlet />
+        <Suspense fallback={<p role="status" className="text-sm text-[var(--muted)]">Loading…</p>}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   )

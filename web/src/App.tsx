@@ -1,3 +1,4 @@
+import { lazy } from 'react'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { AuthGate } from './components/AuthGate'
@@ -20,18 +21,20 @@ import UserProfileEditPage from './pages/UserProfile/UserProfileEditPage'
 import UserPreferencesPage from './pages/UserProfile/UserPreferencesPage'
 import AccountSettingsPage from './pages/UserProfile/AccountSettingsPage'
 
+// Mower and admin pages load on demand (#31): a homeowner, the most common
+// visitor, never downloads them. MainLayout's <Suspense> shows the fallback.
 // Mower pages
-import MowerDashboardPage from './pages/mower/MowerDashboardPage'
-import MowerSetupPage from './pages/mower/MowerSetupPage'
-import MowerStreetsPage from './pages/mower/MowerStreetsPage'
-import MowerHistoryPage from './pages/mower/MowerHistoryPage'
-import MowerPublicProfile from './pages/mower/MowerPublicProfile'
+const MowerDashboardPage = lazy(() => import('./pages/mower/MowerDashboardPage'))
+const MowerSetupPage = lazy(() => import('./pages/mower/MowerSetupPage'))
+const MowerStreetsPage = lazy(() => import('./pages/mower/MowerStreetsPage'))
+const MowerHistoryPage = lazy(() => import('./pages/mower/MowerHistoryPage'))
+const MowerPublicProfile = lazy(() => import('./pages/mower/MowerPublicProfile'))
 
 // Admin pages (flattened from admin/src)
-import AdminDashboardPage from './pages/admin/AdminDashboardPage'
-import AdminUsersPage from './pages/admin/AdminUsersPage'
-import AdminUserDetailPage from './pages/admin/AdminUserDetailPage'
-import AdminGroupsPage from './pages/admin/AdminGroupsPage'
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'))
+const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage'))
+const AdminUserDetailPage = lazy(() => import('./pages/admin/AdminUserDetailPage'))
+const AdminGroupsPage = lazy(() => import('./pages/admin/AdminGroupsPage'))
 
 const router = createBrowserRouter([
   {
