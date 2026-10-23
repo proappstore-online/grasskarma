@@ -111,9 +111,9 @@ export interface SchedulePatch {
   dayOfWeek?: number | null
   startTime?: string | null
   mowerId?: string | null
+  /** 'planned' or 'skipped' only; completion goes through completeSchedule. */
   status?: ScheduleStatus
   dueDate?: number | null
-  completedAt?: number | null
 }
 
 export async function updateSchedule(id: string, patch: SchedulePatch): Promise<void> {
@@ -133,14 +133,8 @@ export async function updateSchedule(id: string, patch: SchedulePatch): Promise<
   if ('mowerId' in patch) set('set_mower_id', 'mower_id', patch.mowerId ?? null)
   if ('status' in patch) set('set_status', 'status', patch.status)
   if ('dueDate' in patch) set('set_due_date', 'due_date', patch.dueDate ?? null)
-  if ('completedAt' in patch) set('set_completed_at', 'completed_at', patch.completedAt ?? null)
   if (Object.keys(params).length === 1) return
   await xOne('update_schedule', params)
-}
-
-export async function markCompleted(id: string): Promise<void> {
-  const now = Date.now()
-  await updateSchedule(id, { status: 'done', completedAt: now })
 }
 
 export interface ScheduleCompletion {

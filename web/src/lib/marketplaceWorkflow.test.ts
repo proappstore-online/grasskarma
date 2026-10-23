@@ -152,6 +152,91 @@ describe('marketplace workflow actions', () => {
     expect(db.prepare("SELECT mower_id, schedule_id, income FROM history_records WHERE id = 'history'").get()).toEqual({ mower_id: 'mower', schedule_id: 'schedule', income: 75 })
   })
 
+  describe('completion is only possible through complete_schedule', () => {
+    const insertSchedule = (status: string, mower: string | null = 'mower') =>
+      db.prepare("INSERT INTO schedules (id, group_id, mower_id, status, completed_at, created_at, updated_at) VALUES ('schedule', 'g1', ?, ?, NULL, 1, 1)").run(mower, status)
+    const complete = { schedule_id: 'schedule', group_id: 'g1', history_id: 'history', date: 1_700_000_100_000 }
+    const markDone = (userId: string, extra: Record<string, number> = {}) =>
+      call('update_schedule', userId, { id: 'schedule', set_status: 1, status: 'done', set_completed_at: 1, completed_at: 5, ...extra })
+    const state = () => db.prepare("SELECT status, completed_at FROM schedules WHERE id = 'schedule'").get()
+    const rows = (table: string) => (db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n
+
+    it('refuses update_schedule marking done for the assigned mower, whatever the source state', () => {
+      for (const status of ['planned', 'skipped', 'done']) {
+        db.exec('DELETE FROM schedules')
+        insertSchedule(status)
+        expect(markDone('mower').changes).toBe(0)
+        expect(markDone('mower', { set_completed_at: 0 }).changes).toBe(0)
+        expect(call('update_schedule', 'mower', { id: 'schedule', set_status: 1, status: 'planned' }).changes).toBe(0)
+        expect(state()).toEqual({ status, completed_at: null })
+      }
+      expect(rows('history_records')).toBe(0)
+      expect(rows('mow_completions')).toBe(0)
+    })
+
+    it('refuses update_schedule completion for group admins, platform admins and strangers', () => {
+      user('platform-admin', 'admin')
+      insertSchedule('planned')
+      for (const caller of ['admin', 'platform-admin', 'unrelated-mower', 'applicant']) {
+        expect(markDone(caller).changes).toBe(0)
+        expect(call('update_schedule', caller, { id: 'schedule', set_completed_at: 1, completed_at: 5 }).changes).toBe(0)
+      }
+      expect(state()).toEqual({ status: 'planned', completed_at: null })
+    })
+
+    it('does not let an admin reopen a completed mow', () => {
+      insertSchedule('planned')
+      call('complete_schedule', 'mower', complete)
+      expect(call('update_schedule', 'admin', { id: 'schedule', set_status: 1, status: 'planned' }).changes).toBe(0)
+      expect(call('update_schedule', 'admin', { id: 'schedule', set_status: 1, status: 'skipped' }).changes).toBe(0)
+      expect(state()).toEqual({ status: 'done', completed_at: 1_700_000_000_000 })
+    })
+
+    it('still lets a group admin skip and re-plan a mow, and edit other fields of a done mow', () => {
+      insertSchedule('planned')
+      expect(call('update_schedule', 'admin', { id: 'schedule', set_status: 1, status: 'skipped' }).changes).toBe(1)
+      expect(call('update_schedule', 'admin', { id: 'schedule', set_status: 1, status: 'planned' }).changes).toBe(1)
+      call('complete_schedule', 'mower', complete)
+      expect(call('update_schedule', 'admin', { id: 'schedule', set_start_time: 1, start_time: '09:30' }).changes).toBe(1)
+    })
+
+    it('completes once with every side effect, and a repeat changes nothing', () => {
+      insertSchedule('planned')
+      call('complete_schedule', 'mower', complete)
+      expect(rows('history_records')).toBe(1)
+      expect(db.prepare("SELECT mower_id, completed_at FROM mow_completions WHERE schedule_id = 'schedule'").get()).toEqual({ mower_id: 'mower', completed_at: 1_700_000_000_000 })
+
+      const repeat = call('complete_schedule', 'mower', { ...complete, history_id: 'history-2', __now: 1_700_000_999_999 } as never)
+      expect(repeat.changes).toBe(0)
+      expect(rows('history_records')).toBe(1)
+      expect(rows('mow_completions')).toBe(1)
+      expect(state()).toEqual({ status: 'done', completed_at: 1_700_000_000_000 })
+    })
+
+    it('refuses complete_schedule for the wrong role, wrong mower and non-planned states', () => {
+      insertSchedule('planned')
+      db.prepare("UPDATE users SET role = 'client' WHERE id = 'mower'").run()
+      expect(call('complete_schedule', 'mower', complete).changes).toBe(0)
+      db.prepare("UPDATE users SET role = 'mower' WHERE id = 'mower'").run()
+      expect(call('complete_schedule', 'unrelated-mower', complete).changes).toBe(0)
+      expect(call('complete_schedule', 'admin', complete).changes).toBe(0)
+      db.exec("UPDATE schedules SET status = 'skipped'")
+      expect(call('complete_schedule', 'mower', complete).changes).toBe(0)
+      expect(state()).toEqual({ status: 'skipped', completed_at: null })
+      expect(rows('history_records')).toBe(0)
+      expect(rows('mow_completions')).toBe(0)
+    })
+
+    it('does not let residents confirm a mow that was never completed', () => {
+      db.prepare("UPDATE users SET street_group_id = 'g1' WHERE id = 'applicant'").run()
+      db.exec("UPDATE street_groups SET member_ids = '[\"admin\",\"applicant\"]'")
+      insertSchedule('planned')
+      markDone('mower')
+      expect(call('confirm_mow', 'applicant', { schedule_id: 'schedule', rating: 5, comment: null }).changes).toBe(0)
+      expect(rows('mow_ratings')).toBe(0)
+    })
+  })
+
   it('does not mark the schedule done if recording history fails', () => {
     db.prepare("INSERT INTO schedules (id, group_id, mower_id, status, created_at, updated_at) VALUES ('schedule', 'g1', 'mower', 'planned', 1, 1)").run()
     db.exec("CREATE TRIGGER reject_history BEFORE INSERT ON history_records BEGIN SELECT RAISE(ABORT, 'history rejected'); END")
