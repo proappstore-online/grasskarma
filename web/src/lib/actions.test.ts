@@ -17,12 +17,24 @@ describe('guarded action contracts', () => {
   })
 
   it('requires the final sentinel statement of a batch to affect one row', async () => {
-    call.mockResolvedValue({ meta: { changes: 0 } })
+    call.mockResolvedValue({ results: [{ meta: { changes: 4 } }, { meta: { changes: 0 } }] })
     await expect(xBatch('admin_delete_user', { user_id: 'u1' })).rejects.toBeInstanceOf(ActionRefusedError)
+  })
+
+  it('returns the final statement metadata from a successful batch', async () => {
+    call.mockResolvedValue({ results: [{ meta: { changes: 4 } }, { meta: { changes: 1, duration: 3 } }] })
+    await expect(xBatch('admin_delete_user', { user_id: 'u1' })).resolves.toEqual({ changes: 1, duration: 3 })
   })
 
   it('returns metadata only for an exactly-one-row mutation', async () => {
     call.mockResolvedValue({ meta: { changes: 1, duration: 4 } })
     await expect(xOne('update_schedule', { id: 's1' })).resolves.toEqual({ changes: 1, duration: 4 })
+  })
+
+  it('rejects a malformed mutation response with a protocol error', async () => {
+    call.mockResolvedValue({ results: [] })
+    await expect(xBatch('admin_delete_user', { user_id: 'u1' })).rejects.toThrow(
+      'admin_delete_user returned an invalid mutation result.',
+    )
   })
 })

@@ -110,6 +110,11 @@ export interface ActionMeta {
   last_row_id?: number
 }
 
+type MutationResponse = {
+  meta?: ActionMeta
+  results?: Array<{ meta?: ActionMeta }>
+}
+
 /** A conditional server-side write was rejected or its target became stale. */
 export class ActionRefusedError extends Error {
   constructor(action: ActionName) {
@@ -148,8 +153,14 @@ export async function q<T, Name extends QueryActionName = QueryActionName>(name:
 /** Call an execute or batch action; resolves to the write metadata. */
 export async function x<Name extends MutationActionName>(name: Name, ...[params = {} as ActionParams<Name>]: ActionArguments<Name>): Promise<ActionMeta> {
   validateActionCall(name, params)
-  const res = await app.actions.call<{ meta: ActionMeta }>(name, params)
-  return res.meta
+  const res = await app.actions.call<MutationResponse>(name, params)
+  const meta = ACTION_MANIFEST[name].operation === 'batch'
+    ? res.results?.[res.results.length - 1]?.meta
+    : res.meta
+  if (!meta || typeof meta.changes !== 'number') {
+    throw new Error(`${name} returned an invalid mutation result.`)
+  }
+  return meta
 }
 
 /** Contract for a guarded single-statement mutation: it must affect one row. */
