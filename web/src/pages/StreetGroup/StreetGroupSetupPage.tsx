@@ -135,7 +135,9 @@ export default function StreetGroupSetupPage() {
         postcode: postcode.trim(),
         country: 'AU',
       }, refresh)
-      navigate('/app', { replace: true })
+      // The effect above navigates after React commits the refreshed profile.
+      // Navigating here races that commit, so PrivateRoute can still see a
+      // null streetGroupId and bounce the caller straight back to setup.
     } catch (err) {
       console.error(err)
       if (err instanceof GroupLocationConflictError) {
