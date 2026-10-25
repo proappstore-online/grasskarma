@@ -1,6 +1,14 @@
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it, vi } from 'vitest'
-import { ExistingGroupList, groupsIncludingCanonicalConflict } from './StreetGroupSetupPage'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const mocks = vi.hoisted(() => ({ createGroup: vi.fn() }))
+
+vi.mock('../../lib/streetGroups', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../lib/streetGroups')>(),
+  createGroup: mocks.createGroup,
+}))
+
+import { createGroupAndRefresh, ExistingGroupList, groupsIncludingCanonicalConflict } from './StreetGroupSetupPage'
 import type { StreetGroup } from '../../models'
 
 const canonicalGroup: StreetGroup = {
@@ -20,6 +28,29 @@ const canonicalGroup: StreetGroup = {
   createdAt: 1,
   updatedAt: 1,
 }
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
+
+describe('StreetGroupSetupPage create flow', () => {
+  it('refreshes after the single atomic create action succeeds', async () => {
+    const refresh = vi.fn().mockResolvedValue(undefined)
+    mocks.createGroup.mockResolvedValue(canonicalGroup)
+
+    await expect(createGroupAndRefresh({
+      name: 'Maple Street neighbours',
+      streetName: 'Maple Street',
+      suburb: 'Carlton',
+      postcode: '3053',
+      country: 'AU',
+    }, refresh)).resolves.toBe(canonicalGroup)
+
+    expect(mocks.createGroup).toHaveBeenCalledOnce()
+    expect(refresh).toHaveBeenCalledOnce()
+    expect(mocks.createGroup.mock.invocationCallOrder[0]).toBeLessThan(refresh.mock.invocationCallOrder[0])
+  })
+})
 
 describe('StreetGroupSetupPage duplicate location flow', () => {
   it('replaces a duplicate conflict with the canonical group instead of a dead-end result', () => {

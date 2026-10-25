@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { GroupLocationConflictError, listGroupsByLocation, createGroup, addMember, createGroupInterest } from '../../lib/streetGroups'
-import { updateUser } from '../../lib/users'
+import { GroupLocationConflictError, listGroupsByLocation, createGroup, createGroupInterest } from '../../lib/streetGroups'
 import type { StreetGroup } from '../../models'
 
 type ExistingGroupListProps = {
@@ -15,6 +14,16 @@ type ExistingGroupListProps = {
 /** Includes the duplicate-create winner so the user can request to join it. */
 export function groupsIncludingCanonicalConflict(groups: StreetGroup[], canonicalGroup: StreetGroup): StreetGroup[] {
   return [canonicalGroup, ...groups.filter((group) => group.id !== canonicalGroup.id)]
+}
+
+/** The create action atomically adds the caller and sets their group pointer. */
+export async function createGroupAndRefresh(
+  input: Parameters<typeof createGroup>[0],
+  refresh: () => Promise<void>,
+): Promise<StreetGroup> {
+  const group = await createGroup(input)
+  await refresh()
+  return group
 }
 
 export function ExistingGroupList({ groups, busy, requestedIds, onJoin }: ExistingGroupListProps) {
@@ -119,16 +128,13 @@ export default function StreetGroupSetupPage() {
     setError(null)
     try {
       const name = `${streetName.trim()} ${postcode.trim()}`
-      const g = await createGroup({
+      await createGroupAndRefresh({
         name,
         streetName: streetName.trim(),
         suburb: suburb.trim(),
         postcode: postcode.trim(),
         country: 'AU',
-      })
-      await addMember(g.id, user.id)
-      await updateUser({ streetGroupId: g.id })
-      await refresh()
+      }, refresh)
       navigate('/app', { replace: true })
     } catch (err) {
       console.error(err)
