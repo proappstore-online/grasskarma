@@ -1,4 +1,5 @@
 import type { BrowserContext } from '@playwright/test'
+import manifest from '../../mcp.json' with { type: 'json' }
 
 // ─── Hermetic platform stand-in for the a11y suite (#30) ─────────────────────
 // The app talks to the platform through exactly two same-origin paths:
@@ -170,16 +171,24 @@ function query(db: Db, me: string, name: string, p: Params): unknown[] | undefin
   return undefined
 }
 
-// Mutations the suite may trigger. They acknowledge one changed row (the
-// guarded-action contract) and are recorded for the keyboard walkthrough to
-// assert on; the fixture rows themselves do not change.
-const MUTATIONS = new Set([
-  'create_me', 'update_me', 'record_photo_object', 'queue_photo_cleanup', 'complete_photo_cleanup', 'admin_set_role', 'admin_delete_user',
-  'create_group', 'update_group', 'add_group_member', 'remove_group_member', 'add_group_admin', 'remove_group_admin', 'delete_group',
-  'create_group_interest', 'delete_group_interest', 'approve_group_interest', 'create_schedule', 'update_schedule', 'complete_schedule',
-  'delete_schedule', 'create_review', 'update_review', 'delete_review', 'record_history', 'create_mower_interest', 'delete_mower_interest', 'cast_vote',
-  'set_reminder_opt_out', 'clear_reminder_opt_out', 'confirm_mow',
-])
+type ManifestTool = {
+  name: string
+  operation: 'query' | 'execute' | 'batch'
+  statements?: unknown[]
+}
+
+// Derive mutation names and response envelopes from the shipped manifest so
+// this stand-in cannot silently retain an obsolete platform protocol shape.
+const TOOLS = new Map((manifest.tools as ManifestTool[]).map((tool) => [tool.name, tool]))
+
+function mutationResult(action: string) {
+  const tool = TOOLS.get(action)
+  if (!tool || tool.operation === 'query') return undefined
+
+  const meta = { changes: 1 }
+  if (tool.operation === 'execute') return { meta }
+  return { results: (tool.statements ?? []).map(() => ({ meta })) }
+}
 
 export interface Platform {
   /** Mutating actions the page called, in order. */
@@ -239,9 +248,10 @@ export async function mockPlatform(context: BrowserContext, persona: Persona, { 
       }
       const rows = query(db, me, action, params)
       if (rows) return route.fulfill({ json: { rows } })
-      if (MUTATIONS.has(action)) {
+      const result = mutationResult(action)
+      if (result) {
         platform.mutations.push({ name: action, params })
-        return route.fulfill({ json: { meta: { changes: 1 } } })
+        return route.fulfill({ json: result })
       }
     }
 
